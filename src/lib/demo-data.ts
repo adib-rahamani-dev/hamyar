@@ -1,7 +1,7 @@
 export const demoRooms = [
   {
     id: "math",
-    name: "ریاضی؛ یک قدم جلوتر",
+    name: "کلاس ریاضی",
     group: "پایه نهم · کلاس ۹/۱",
     teacher: "سارا احمدی",
     initials: "سا",
@@ -9,12 +9,12 @@ export const demoRooms = [
     duration: "۶۰ دقیقه",
     members: 24,
     live: true,
-    topic: "معادله‌ها و دنیای آن‌ها",
+    topic: "معادله‌های درجه اول",
     color: "green",
   },
   {
     id: "science",
-    name: "آزمایشگاه علوم",
+    name: "کلاس علوم",
     group: "پایه هشتم · کلاس ۸/۲",
     teacher: "علی رضایی",
     initials: "عر",
@@ -22,12 +22,12 @@ export const demoRooms = [
     duration: "۴۵ دقیقه",
     members: 20,
     live: false,
-    topic: "از ایده تا تجربه",
+    topic: "آزمایش و مشاهده",
     color: "purple",
   },
   {
     id: "literature",
-    name: "در مسیر واژه‌ها",
+    name: "کلاس فارسی",
     group: "پایه هفتم · کلاس ۷/۱",
     teacher: "مریم کریمی",
     initials: "مک",

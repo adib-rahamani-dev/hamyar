@@ -52,10 +52,10 @@ export function Whiteboard() {
   }
 
   return (
-    <section className="panel board-panel" aria-label="تختهٔ محلی نمونه">
+    <section className="board-panel" aria-label="تختهٔ محلی نمونه">
       <div className="board-toolbar">
         <strong>
-          تختهٔ کلاس <span className="muted small-text">/ محلی</span>
+          <PenLine size={17} /> قلم
         </strong>
         {colors.map((item) => (
           <button
@@ -68,6 +68,7 @@ export function Whiteboard() {
             <span style={{ background: item.value }} />
           </button>
         ))}
+        <span className="toolbar-divider" />
         <button
           className="icon-button"
           aria-label="برگشت آخرین خط"
@@ -95,111 +96,90 @@ export function Whiteboard() {
           <Download size={18} />
         </button>
       </div>
-      <svg
-        ref={svgRef}
-        xmlns="http://www.w3.org/2000/svg"
-        className="whiteboard"
-        viewBox="0 0 1000 600"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="ناحیهٔ رسم؛ با ماوس یا لمس خط بکشید"
-        onPointerDown={(event) => {
-          if (
-            active.current ||
-            (event.pointerType === "mouse" && event.button !== 0)
-          )
-            return;
-          const id = crypto.randomUUID();
-          const startPoint = point(event);
-          active.current = { strokeId: id, pointerId: event.pointerId };
-          event.currentTarget.setPointerCapture(event.pointerId);
-          setStrokes((current) => [
-            ...current,
-            { id, color, points: [startPoint] },
-          ]);
-        }}
-        onPointerMove={(event) => {
-          if (!active.current || active.current.pointerId !== event.pointerId)
-            return;
-          const id = active.current.strokeId;
-          const next = point(event);
-          setStrokes((current) =>
-            current.map((stroke) =>
-              stroke.id === id
-                ? { ...stroke, points: [...stroke.points, next] }
-                : stroke,
+      <div className="board-canvas">
+        <svg
+          ref={svgRef}
+          xmlns="http://www.w3.org/2000/svg"
+          className="whiteboard"
+          viewBox="0 0 1000 600"
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="ناحیهٔ رسم؛ با ماوس یا لمس خط بکشید"
+          onPointerDown={(event) => {
+            if (
+              active.current ||
+              (event.pointerType === "mouse" && event.button !== 0)
+            )
+              return;
+            const id = crypto.randomUUID();
+            const startPoint = point(event);
+            active.current = { strokeId: id, pointerId: event.pointerId };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            setStrokes((current) => [
+              ...current,
+              { id, color, points: [startPoint] },
+            ]);
+          }}
+          onPointerMove={(event) => {
+            if (!active.current || active.current.pointerId !== event.pointerId)
+              return;
+            const id = active.current.strokeId;
+            const next = point(event);
+            setStrokes((current) =>
+              current.map((stroke) =>
+                stroke.id === id
+                  ? { ...stroke, points: [...stroke.points, next] }
+                  : stroke,
+              ),
+            );
+          }}
+          onPointerUp={end}
+          onPointerCancel={end}
+          onLostPointerCapture={() => {
+            active.current = null;
+          }}
+        >
+          <defs>
+            <pattern
+              id="board-grid"
+              width="25"
+              height="25"
+              patternUnits="userSpaceOnUse"
+            >
+              <circle cx="1" cy="1" r="1" fill="#9daf9e" opacity=".35" />
+            </pattern>
+          </defs>
+          <rect width="1000" height="600" fill="#f6f8f3" />
+          <rect width="1000" height="600" fill="url(#board-grid)" />
+          {strokes.map((stroke) =>
+            stroke.points.length === 1 ? (
+              <circle
+                key={stroke.id}
+                cx={stroke.points[0]!.x}
+                cy={stroke.points[0]!.y}
+                r="2"
+                fill={stroke.color}
+              />
+            ) : (
+              <polyline
+                key={stroke.id}
+                points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             ),
-          );
-        }}
-        onPointerUp={end}
-        onPointerCancel={end}
-        onLostPointerCapture={() => {
-          active.current = null;
-        }}
-      >
-        <defs>
-          <pattern
-            id="board-grid"
-            width="25"
-            height="25"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="1" cy="1" r="1" fill="#9daf9e" opacity=".35" />
-          </pattern>
-        </defs>
-        <rect width="1000" height="600" fill="#f6f8f3" />
-        <rect width="1000" height="600" fill="url(#board-grid)" />
+          )}
+        </svg>
         {strokes.length === 0 && (
-          <g pointerEvents="none">
-            <text
-              x="500"
-              y="260"
-              textAnchor="middle"
-              fill="#446650"
-              fontFamily="Vazirmatn, sans-serif"
-              fontSize="29"
-              direction="rtl"
-            >
-              ایده‌های بزرگ، از یک خط شروع می‌شوند.
-            </text>
-            <text
-              x="500"
-              y="303"
-              textAnchor="middle"
-              fill="#6c8073"
-              fontFamily="Vazirmatn, sans-serif"
-              fontSize="17"
-              direction="rtl"
-            >
-              قلم را انتخاب کنید و روی تخته بنویسید.
-            </text>
-          </g>
+          <div className="board-empty" aria-hidden="true">
+            <PenLine size={31} />
+            <strong>اینجا بنویسید</strong>
+            <span>با ماوس یا لمس، روی تخته رسم کنید.</span>
+          </div>
         )}
-        {strokes.map((stroke) =>
-          stroke.points.length === 1 ? (
-            <circle
-              key={stroke.id}
-              cx={stroke.points[0]!.x}
-              cy={stroke.points[0]!.y}
-              r="2"
-              fill={stroke.color}
-            />
-          ) : (
-            <polyline
-              key={stroke.id}
-              points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")}
-              fill="none"
-              stroke={stroke.color}
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ),
-        )}
-      </svg>
-      <div className="board-hint">
-        <PenLine size={15} /> رسم، برگشت و خروجی SVG فعال‌اند. اشتراک تخته و
-        ذخیرهٔ دائمی در مراحل بعد اضافه می‌شوند.
       </div>
     </section>
   );

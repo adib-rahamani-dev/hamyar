@@ -6,9 +6,9 @@ import { Download, PenLine, Trash2, Undo2 } from "lucide-react";
 type Point = { x: number; y: number };
 type Stroke = { id: string; color: string; points: Point[] };
 const colors = [
-  { value: "#1e6542", label: "سبز" },
-  { value: "#222d40", label: "سرمه‌ای" },
-  { value: "#975492", label: "بنفش" },
+  { value: "green", label: "سبز" },
+  { value: "ink", label: "متن" },
+  { value: "purple", label: "بنفش" },
 ];
 
 export function Whiteboard() {
@@ -40,7 +40,24 @@ export function Whiteboard() {
 
   function exportBoard() {
     if (!svgRef.current) return;
-    const serialized = new XMLSerializer().serializeToString(svgRef.current);
+    const clone = svgRef.current.cloneNode(true) as SVGSVGElement;
+    const palette = getComputedStyle(svgRef.current);
+    clone
+      .querySelector("rect")
+      ?.setAttribute("fill", palette.getPropertyValue("--board").trim());
+    clone.querySelectorAll("[data-pen]").forEach((element) => {
+      const color = palette
+        .getPropertyValue(`--pen-${element.getAttribute("data-pen")}`)
+        .trim();
+      element.setAttribute(
+        element.tagName === "circle" ? "fill" : "stroke",
+        color,
+      );
+    });
+    clone
+      .querySelector("pattern circle")
+      ?.setAttribute("fill", palette.getPropertyValue("--board-grid").trim());
+    const serialized = new XMLSerializer().serializeToString(clone);
     const url = URL.createObjectURL(
       new Blob([serialized], { type: "image/svg+xml" }),
     );
@@ -65,7 +82,7 @@ export function Whiteboard() {
             className={`board-color ${color === item.value ? "selected" : ""}`}
             onClick={() => setColor(item.value)}
           >
-            <span style={{ background: item.value }} />
+            <span style={{ background: `var(--pen-${item.value})` }} />
           </button>
         ))}
         <span className="toolbar-divider" />
@@ -146,26 +163,28 @@ export function Whiteboard() {
               height="25"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="1" cy="1" r="1" fill="#9daf9e" opacity=".35" />
+              <circle cx="1" cy="1" r="1" fill="var(--board-grid)" />
             </pattern>
           </defs>
-          <rect width="1000" height="600" fill="#f6f8f3" />
+          <rect width="1000" height="600" fill="var(--board)" />
           <rect width="1000" height="600" fill="url(#board-grid)" />
           {strokes.map((stroke) =>
             stroke.points.length === 1 ? (
               <circle
                 key={stroke.id}
+                data-pen={stroke.color}
                 cx={stroke.points[0]!.x}
                 cy={stroke.points[0]!.y}
                 r="2"
-                fill={stroke.color}
+                fill={`var(--pen-${stroke.color})`}
               />
             ) : (
               <polyline
                 key={stroke.id}
+                data-pen={stroke.color}
                 points={stroke.points.map((p) => `${p.x},${p.y}`).join(" ")}
                 fill="none"
-                stroke={stroke.color}
+                stroke={`var(--pen-${stroke.color})`}
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"

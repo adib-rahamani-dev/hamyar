@@ -62,6 +62,10 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 
 برنامهٔ Next.js روی پروژهٔ `hamyar` در Vercel منتشر می‌شود. در حال حاضر دادهٔ نمونه و رابط محلی است و هیچ credential رسانه یا storage لازم ندارد. فایل‌های `.env*`، `.vercel`، artifact و تست از سورس انتشار کنار گذاشته می‌شوند؛ token، secret و تنظیم محلی در Git نگهداری نمی‌شوند. LiveKit SFU، TURN، Egress و فرایند WebSocket تخته باید بعداً روی زیرساخت مناسب و مستقل اجرا شوند؛ Vercel میزبان رابط و API کنترل است، نه media server. پروژه به دلیل خطای دسترسی اتصال GitHub در نخستین link، از CLI منتشر می‌شود؛ اتصال خودکار Git تا تأیید مجوز GitHub ادعا نمی‌شود.
 
+## پیش‌نمایش و جلوهٔ صوتی
+
+`src/modules/media/local-capture.ts` مالک trackهای محلی است و lifecycle آن مستقل از transport است. hooks React صرفاً وضعیت را مشترک می‌کنند؛ دریافت دستگاه فقط در action صریح انجام می‌شود. `useAudioReaction` مصرف‌کنندهٔ یک MediaStream است؛ در آینده می‌تواند به track صوت مدرس از LiveKit متصل شود، اما اکنون فقط میکروفون خود کاربر را تحلیل می‌کند. نمونه‌های float صرفاً در حافظهٔ effect هستند، به سرور یا log نمی‌روند و به speaker وصل نمی‌شوند. analyser و AudioContext هنگام توقف جلوه، خروج یا قطع capture آزاد می‌شوند؛ در tab مخفی پردازش صوتی suspend است.
+
 ## منابع تصمیم، بررسی‌شده در 2026-10-13
 
 - [Next.js installation](https://nextjs.org/docs/app/getting-started/installation)
@@ -69,5 +73,7 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 - [LiveKit deployment: TLS, TURN, Redis, network](https://docs.livekit.io/transport/self-hosting/deployment/)
 - [LiveKit Egress](https://docs.livekit.io/transport/media/ingress-egress/egress/)
 - [Better Auth organization](https://better-auth.com/docs/plugins/organization)
+- [دریافت دستگاه و رضایت کاربر](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+- [Web Audio visualization](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Visualizations_with_Web_Audio_API)
 
 نسخهٔ نصب‌شده و lockfile مرجع API اجرایی‌اند؛ مستندات آنلاین می‌توانند از نسخهٔ SDK جلوتر باشند.

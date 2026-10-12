@@ -39,6 +39,10 @@ HTTPS/WSS و DTLS-SRTP در انتقال، encryption at rest در storage. E2EE
 
 کمینه‌سازی داده، سیاست نگهداری چت/ضبط، export و حذف حساب، حذف backup طبق برنامه، بدون محتوای درس در telemetry. audit شامل actor، سازمان، اتاق، action، target، reason، correlationId و timestamp است. token، secret و محتوای خصوصی در log نباشد. webhook recording با امضای معتبر و deduplication در transaction پردازش شود.
 
+## دریافت محلی دستگاه‌ها
+
+`LocalCapture` فقط پس از کلیک کاربر `getUserMedia` را فراخوانی می‌کند؛ مجوز میکروفون و دوربین مستقل‌اند. خاموش‌کردن دستگاه به‌جای پنهان‌کردن UI، همهٔ trackهای آن را stop می‌کند. permission دیرهنگام پس از لغو یا خروج، بلافاصله بسته می‌شود. unmount و pagehide منابع را آزاد می‌کنند و قطع سخت‌افزار وضعیت را اصلاح می‌کند. Web Audio فقط سطح صدا را برای جلوهٔ محدود محاسبه می‌کند؛ هیچ اتصال به خروجی بلندگو، ضبط، ارسال، ذخیره یا telemetry صدا وجود ندارد. پاک‌سازی، خطای مجوز و خروج با دستگاه مصنوعی در آزمون‌ها پوشش داده شده‌اند. مجوز محلی دستگاه به معنی مجوز انتشار رسانه در اتاق نیست؛ کنترل publication در سرور همچنان لازم است.
+
 ## قبل از production
 
 احراز هویت واقعی و MFA، negative tests بین دو tenant، access revocation، origin/rate limits، TLS و TURN، CSP، اسکن فایل، backup و restore عملی، load test رسانه و ضبط، سیاست حریم خصوصی و بررسی نفوذ مستقل لازم‌اند.

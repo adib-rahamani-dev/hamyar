@@ -34,7 +34,6 @@ type Directory = {
   organizations: Organization[];
 };
 const messages: Record<string, string> = {
-  MFA_REQUIRED: "ابتدا تأیید دومرحله‌ای را برای این نشست فعال کنید.",
   MEMBERSHIP_REVOKED: "عضویت فعال در این مجموعه ندارید.",
   NOT_FOUND: "این مورد در مجموعهٔ فعال پیدا نشد.",
   OWNER_REQUIRED: "این تغییر فقط برای مالک مجموعه مجاز است.",
@@ -71,11 +70,9 @@ async function api<T>(
 }
 export function WorkspacePanel({
   name,
-  mfa,
   userId,
 }: {
   name: string;
-  mfa: boolean;
   userId: string;
 }) {
   const [directory, setDirectory] = useState<Directory>({
@@ -99,7 +96,7 @@ export function WorkspacePanel({
       const current = result.organizations.find(
         (o) => o.id === result.activeOrganizationId,
       );
-      if (current && current.role !== "member" && mfa) {
+      if (current && current.role !== "member") {
         const [people, invites] = await Promise.all([
           api<Member[]>("members"),
           api<Invite[]>("invitations"),
@@ -119,7 +116,7 @@ export function WorkspacePanel({
     } finally {
       setLoading(false);
     }
-  }, [mfa]);
+  }, []);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -287,14 +284,14 @@ export function WorkspacePanel({
             </select>
             <button
               className="button primary"
-              disabled={!mfa || busy || loading}
+              disabled={busy || loading}
             >
               ایجاد مجموعه <Plus size={18} />
             </button>
           </form>
         </section>
       </div>
-      {active && (active.role === "member" || mfa) && (
+      {active && (active.role === "member") && (
         <RealRoomsPanel
           key={active.id}
           organizationId={active.id}

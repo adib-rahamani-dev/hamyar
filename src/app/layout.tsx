@@ -20,7 +20,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{document.documentElement.dataset.theme=localStorage.getItem('hamyar-theme')==='light'?'light':'dark'}catch{}`,
+            __html: `try{document.documentElement.dataset.theme=localStorage.getItem('hamyar-theme')==='light'?'light':'dark';document.documentElement.dataset.effects=localStorage.getItem('hamyar-effects')==='off'?'off':'on'}catch{}`,
           }}
         />
       </head>

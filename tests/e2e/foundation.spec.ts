@@ -19,9 +19,9 @@ test("dashboard supports Persian, both themes, search and scoped sample navigati
   await expect(page.locator(".room-card")).toHaveCount(1);
   await page.getByRole("textbox", { name: "جست‌وجوی کلاس" }).fill("پیدانشدنی");
   await expect(page.getByText("کلاسی با این عبارت پیدا نشد.")).toBeVisible();
-  await page.getByRole("button", { name: "اعضای مجموعه" }).click();
+  await page.getByRole("link", { name: "اعضای مجموعه", exact: true }).click();
   await expect(page.locator(".person-row")).toHaveCount(4);
-  await page.getByRole("button", { name: "مرکز نظارت" }).click();
+  await page.getByRole("link", { name: "مرکز نظارت", exact: true }).click();
   await expect(page.locator(".supervisor-room")).toHaveCount(3);
   expect(errors).toEqual([]);
 });
@@ -29,7 +29,14 @@ test("dashboard supports Persian, both themes, search and scoped sample navigati
 test("viewport has no horizontal overflow on dashboard or classroom", async ({
   page,
 }) => {
-  for (const route of ["/", "/rooms/demo"]) {
+  for (const route of [
+    "/",
+    "/rooms/demo",
+    "/supervisor",
+    "/support",
+    "/members",
+    "/settings",
+  ]) {
     await page.goto(route);
     await page.evaluate(() => document.fonts.ready);
     const dimensions = await page.evaluate(() => ({

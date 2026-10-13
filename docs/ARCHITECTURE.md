@@ -66,6 +66,12 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 
 `src/modules/media/local-capture.ts` مالک trackهای محلی است و lifecycle آن مستقل از transport است. hooks React صرفاً وضعیت را مشترک می‌کنند؛ دریافت دستگاه فقط در action صریح انجام می‌شود. `useAudioReaction` مصرف‌کنندهٔ یک MediaStream است؛ در آینده می‌تواند به track صوت مدرس از LiveKit متصل شود، اما اکنون فقط میکروفون خود کاربر را تحلیل می‌کند. نمونه‌های float صرفاً در حافظهٔ effect هستند، به سرور یا log نمی‌روند و به speaker وصل نمی‌شوند. analyser و AudioContext هنگام توقف جلوه، خروج یا قطع capture آزاد می‌شوند؛ در tab مخفی پردازش صوتی suspend است.
 
+## نظارت پایه و پشتیبانی
+
+ماژول `operations` فقط projection عمومی و allowlist‌شدهٔ اجرای وب را تولید می‌کند. `/api/status` اطلاعات نشست یا سازمان ندارد، cache نمی‌شود و سلامت رسانه یا ظرفیت را ادعا نمی‌کند. limit/used/remaining تا اتصال دادهٔ واقعی null هستند. API مصرف، مشخصات خصوصی و کنترل اتاق باید در فاز identity/data با نقش معتبر اضافه شوند.
+
+ماژول `support` در این مرحله فقط schema پیش‌نویس نسخه‌دار دارد؛ فرم با اقدام کاربر متن را در مرورگر ذخیره/حذف و دانلود می‌کند. storage یا mutation سروری وجود ندارد. تیکت آینده مدل سازمانی و pipeline ثبت/پاسخ مستقل با audit و idempotency خواهد داشت. [ADR 0002](adr/0002-public-status-and-support-drafts.md) مرز این مرحله را ثبت می‌کند.
+
 ## منابع تصمیم، بررسی‌شده در 2026-10-13
 
 - [Next.js installation](https://nextjs.org/docs/app/getting-started/installation)

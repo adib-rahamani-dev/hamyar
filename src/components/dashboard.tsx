@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   AudioLines,
@@ -9,6 +10,7 @@ import {
   ChevronLeft,
   CircleHelp,
   GraduationCap,
+  LifeBuoy,
   Search,
   Settings2,
   ShieldCheck,
@@ -17,26 +19,49 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { AppearanceToggle } from "./appearance-toggle";
 import { demoPeople, demoRooms, faNumber } from "@/lib/demo-data";
+const SupervisorPanel = dynamic(() =>
+  import("./supervisor-panel").then((module) => module.SupervisorPanel),
+);
+const SupportPanel = dynamic(() =>
+  import("./support-panel").then((module) => module.SupportPanel),
+);
 
-type View = "classes" | "people" | "supervisor" | "settings";
-const navigation: { id: View; label: string; icon: LucideIcon }[] = [
-  { id: "classes", label: "کلاس‌ها", icon: Video },
-  { id: "people", label: "اعضای مجموعه", icon: Users },
-  { id: "supervisor", label: "مرکز نظارت", icon: ShieldCheck },
-  { id: "settings", label: "تنظیمات", icon: Settings2 },
+type View = "classes" | "people" | "supervisor" | "support" | "settings";
+const navigation: {
+  id: View;
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { id: "classes", href: "/", label: "کلاس‌ها", icon: Video },
+  { id: "people", href: "/members", label: "اعضای مجموعه", icon: Users },
+  {
+    id: "supervisor",
+    href: "/supervisor",
+    label: "مرکز نظارت",
+    icon: ShieldCheck,
+  },
+  { id: "support", href: "/support", label: "پشتیبانی", icon: LifeBuoy },
+  { id: "settings", href: "/settings", label: "تنظیمات", icon: Settings2 },
 ];
+const subtitles: Record<View, string> = {
+  classes: "یک فضای آرام برای یادگیری و ارتباط.",
+  people: "آدم‌هایی که یادگیری را ممکن می‌کنند.",
+  supervisor: "زیرساخت، ظرفیت و اتاق‌ها؛ با وضعیت روشن.",
+  support: "هر مسئله، یک مسیر روشن برای پیگیری.",
+  settings: "فضای همیار را به سلیقهٔ خود نزدیک کنید.",
+};
 
-export function Dashboard() {
-  const [view, setView] = useState<View>("classes");
+export function Dashboard({ initialView = "classes" }: { initialView?: View }) {
   const [query, setQuery] = useState("");
+  const title = navigation.find((item) => item.id === initialView)!.label;
   const rooms = demoRooms.filter((room) =>
     `${room.name} ${room.teacher} ${room.group}`.includes(query),
   );
-  const title = navigation.find((item) => item.id === view)!.label;
-
   return (
-    <div className="app-shell">
+    <div className="app-shell management-shell">
       <a className="skip-link" href="#main-content">
         رفتن به محتوای اصلی
       </a>
@@ -45,148 +70,192 @@ export function Dashboard() {
           <span className="brand-mark">
             <AudioLines size={27} />
           </span>
-          <strong>همیار</strong>
+          <strong>
+            همیار<span className="brand-caption">فضای ارتباط و یادگیری</span>
+          </strong>
         </Link>
         <div className="workspace-label">
-          <GraduationCap size={21} />
-          <span>مدرسهٔ آینده</span>
+          <span className="workspace-icon">
+            <GraduationCap size={22} />
+          </span>
+          <div>
+            <strong>مدرسهٔ آینده</strong>
+            <span>فضای آموزشی نمونه</span>
+          </div>
+          <ChevronLeft size={16} />
         </div>
+        <span className="nav-caption">فضای مدیریت</span>
         <nav className="main-nav" aria-label="منوی اصلی">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
+          {navigation.map(({ id, href, label, icon: Icon }) => (
+            <Link
               key={id}
-              className={`nav-item ${view === id ? "active" : ""}`}
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => {
-                setView(id);
-                setQuery("");
-              }}
+              href={href}
+              className={`nav-item ${initialView === id ? "active" : ""}`}
+              aria-current={initialView === id ? "page" : undefined}
             >
-              <Icon size={21} />
+              <Icon size={21} strokeWidth={1.7} />
               <span>{label}</span>
-            </button>
+              {initialView === id && <span className="nav-active-dot" />}
+            </Link>
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <div className="sidebar-assistance">
+            <LifeBuoy size={23} />
+            <strong>همراه شما در کلاس</strong>
+            <p>درخواست پشتیبانی را آماده کنید.</p>
+            <Link href="/support">
+              مرکز پشتیبانی <ArrowLeft size={16} />
+            </Link>
+          </div>
           <div className="sidebar-profile">
-            <span className="avatar">نم</span>
+            <span className="avatar">کا</span>
             <div>
-              <strong>نیلوفر موسوی</strong>
-              <span>مدیر مجموعه · نمونه</span>
+              <strong>کاربر آزمایشی</strong>
+              <span>نشست واقعی هنوز متصل نیست</span>
             </div>
           </div>
-          <details className="demo-details">
-            <summary>
-              <CircleHelp size={18} /> دربارهٔ نسخهٔ نمایشی
-            </summary>
-            <p>
-              اطلاعات این محیط نمونه است. در اتاق، تخته و چت فقط در مرورگر شما
-              کار می‌کنند. تماس زنده و ضبط هنوز فعال نیستند.
-            </p>
-          </details>
         </div>
       </aside>
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">
-            مدرسهٔ آینده <ChevronLeft size={17} />
+            فضای مدیریت <ChevronLeft size={17} />
             <span>{title}</span>
           </div>
           <div className="topbar-actions">
-            <span className="demo-label">نسخهٔ نمایشی</span>
+            <span className="demo-label">نسخهٔ توسعه</span>
+            <AppearanceToggle />
             <ThemeToggle />
           </div>
         </header>
         <main id="main-content" className="dashboard-main">
           <div className="page-heading">
             <div>
-              <h1>{view === "classes" ? "کلاس‌های شما" : title}</h1>
-              <p className="muted">
-                {view === "classes"
-                  ? "کلاس مورد نظر را انتخاب کنید و وارد شوید."
-                  : view === "people"
-                    ? "معلم‌ها و مدیران مجموعه"
-                    : view === "supervisor"
-                      ? "دسترسی به تمام اتاق‌های مجموعه"
-                      : "ظاهر و تنظیمات مجموعه"}
-              </p>
+              <span className="eyebrow">فضای شما در همیار</span>
+              <h1>{initialView === "classes" ? "کلاس‌های شما" : title}</h1>
+              <p className="muted">{subtitles[initialView]}</p>
             </div>
-            {view !== "classes" && (
-              <button
-                className="button secondary"
-                onClick={() => setView("classes")}
-              >
-                بازگشت به کلاس‌ها <ArrowLeft size={19} />
-              </button>
+            {initialView === "classes" ? (
+              <Link className="button secondary" href="/supervisor">
+                <ShieldCheck size={19} /> مرکز نظارت
+              </Link>
+            ) : (
+              <Link className="text-action" href="/">
+                کلاس‌ها <ArrowLeft size={18} />
+              </Link>
             )}
           </div>
-
-          {view === "classes" && (
-            <section className="rooms-section" aria-label="کلاس‌های نمونه">
-              <div className="list-heading">
-                <h2>
-                  فهرست کلاس‌ها{" "}
-                  <span className="count-label">
-                    {faNumber(demoRooms.length)}
-                  </span>
-                </h2>
-                <label className="search-field">
-                  <Search size={20} />
-                  <input
-                    aria-label="جست‌وجوی کلاس"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="جست‌وجوی کلاس یا معلم"
-                  />
-                </label>
-              </div>
-              <div className="rooms-list">
-                {rooms.map((room) => (
-                  <article className="room-card" key={room.id}>
-                    <span className="room-symbol">
-                      <BookOpen size={27} />
-                    </span>
-                    <div className="room-description">
-                      <h3>{room.name}</h3>
-                      <p>{room.group}</p>
-                      <span>{room.teacher}</span>
-                    </div>
-                    <div className="room-meta">
-                      <strong>{room.time}</strong>
-                      <span>{room.duration}</span>
-                    </div>
-                    <Link
-                      className={`button ${room.live ? "primary" : "secondary"}`}
-                      href="/rooms/demo"
-                    >
-                      ورود به اتاق نمونه <ArrowLeft size={19} />
-                    </Link>
-                  </article>
-                ))}
-              </div>
-              {rooms.length === 0 && (
-                <div className="empty-state">
-                  <Search size={30} />
-                  <h3>کلاسی با این عبارت پیدا نشد.</h3>
-                  <button
-                    className="button secondary"
-                    onClick={() => setQuery("")}
-                  >
-                    پاک‌کردن جست‌وجو
-                  </button>
+          {initialView === "classes" && (
+            <>
+              <section className="class-welcome">
+                <div>
+                  <span className="eyebrow">یادگیری، با خیال آسوده</span>
+                  <h2>جا برای ایده‌های بزرگ.</h2>
+                  <p>تخته، گفت‌وگو و ابزارهای کلاس، در یک فضای ساده.</p>
+                  <Link className="button primary" href="/rooms/demo">
+                    تجربهٔ اتاق نمونه <ArrowLeft size={18} />
+                  </Link>
                 </div>
-              )}
-              <p className="section-note">
-                اطلاعات کلاس‌ها نمونه است. ورود، محیط نمایشی اتاق را باز می‌کند.
-              </p>
-            </section>
+                <div className="welcome-illustration" aria-hidden="true">
+                  <div className="illustration-window">
+                    <span />
+                    <span />
+                    <span />
+                    <BookOpen size={67} strokeWidth={1.2} />
+                    <div className="illustration-line" />
+                    <div className="illustration-line short" />
+                  </div>
+                  <span className="floating-symbol">
+                    <GraduationCap size={29} />
+                  </span>
+                </div>
+              </section>
+              <section className="rooms-section" aria-label="کلاس‌های نمونه">
+                <div className="list-heading">
+                  <h2>
+                    فهرست کلاس‌ها{" "}
+                    <span className="count-label">
+                      {faNumber(demoRooms.length)}
+                    </span>
+                  </h2>
+                  <label className="search-field">
+                    <Search size={20} />
+                    <input
+                      aria-label="جست‌وجوی کلاس"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="جست‌وجوی کلاس یا معلم"
+                    />
+                  </label>
+                </div>
+                <div className="rooms-list">
+                  {rooms.map((room) => (
+                    <article
+                      className={`room-card course-${room.color}`}
+                      key={room.id}
+                    >
+                      <div className="course-card-top">
+                        <span className={`course-icon ${room.color}`}>
+                          <BookOpen size={25} />
+                        </span>
+                        <span className="soft-badge">کلاس نمونه</span>
+                      </div>
+                      <div className="room-description">
+                        <span className="course-group">{room.group}</span>
+                        <h3>{room.name}</h3>
+                        <p>{room.topic}</p>
+                      </div>
+                      <div className="course-teacher">
+                        <span className="avatar">{room.initials}</span>
+                        <div>
+                          <strong>{room.teacher}</strong>
+                          <span>میزبان نمونه</span>
+                        </div>
+                      </div>
+                      <div className="course-card-bottom">
+                        <div className="room-meta">
+                          <strong>{room.time}</strong>
+                          <span>{room.duration}</span>
+                        </div>
+                        <Link
+                          className="icon-button"
+                          href="/rooms/demo"
+                          aria-label={`ورود به اتاق نمونه ${room.name}`}
+                        >
+                          <ArrowLeft size={21} />
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                {rooms.length === 0 && (
+                  <div className="empty-state">
+                    <Search size={30} />
+                    <h3>کلاسی با این عبارت پیدا نشد.</h3>
+                    <button
+                      className="button secondary"
+                      onClick={() => setQuery("")}
+                    >
+                      پاک‌کردن جست‌وجو
+                    </button>
+                  </div>
+                )}
+                <p className="section-note">
+                  <CircleHelp size={16} /> اطلاعات کلاس‌ها و میزبان‌ها نمونه
+                  است. اتاق فعلاً تماس زنده و ضبط ندارد.
+                </p>
+              </section>
+            </>
           )}
-
-          {view === "people" && (
-            <section className="panel people-panel">
+          {initialView === "people" && (
+            <section className="ops-panel people-panel">
               <div className="section-heading">
-                <h2>اعضای مجموعه</h2>
-                <span className="demo-label">
+                <div>
+                  <span className="eyebrow">همراهان مجموعه</span>
+                  <h2>اعضای مجموعه</h2>
+                </div>
+                <span className="soft-badge">
                   {faNumber(demoPeople.length)} عضو نمونه
                 </span>
               </div>
@@ -203,41 +272,16 @@ export function Dashboard() {
                 ))}
               </div>
               <p className="section-note">
-                افزودن و دعوت اعضا در نسخهٔ عملیاتی فعال می‌شود.
+                دعوت، عضویت و تغییر نقش پس از اتصال احراز هویت و پایگاه داده
+                فعال می‌شوند.
               </p>
             </section>
           )}
-
-          {view === "supervisor" && (
-            <section className="panel">
-              <div className="section-heading">
-                <h2>اتاق‌های مجموعه</h2>
-                <ShieldCheck size={24} className="accent-text" />
-              </div>
-              <div className="supervisor-list">
-                {demoRooms.map((room) => (
-                  <article className="supervisor-room" key={room.id}>
-                    <div>
-                      <h3>{room.name}</h3>
-                      <p className="muted">
-                        {room.teacher} · {room.group}
-                      </p>
-                    </div>
-                    <Link className="button secondary" href="/rooms/demo">
-                      مشاهدهٔ اتاق <ArrowLeft size={19} />
-                    </Link>
-                  </article>
-                ))}
-              </div>
-              <p className="section-note">
-                این فهرست نمایشی است. کنترل افراد و دسترسی مدیریتی به سرور متصل
-                نشده‌اند.
-              </p>
-            </section>
-          )}
-
-          {view === "settings" && (
-            <section className="panel settings-panel">
+          {initialView === "supervisor" && <SupervisorPanel />}
+          {initialView === "support" && <SupportPanel />}
+          {initialView === "settings" && (
+            <section className="ops-panel settings-panel">
+              <span className="eyebrow">به سلیقهٔ شما</span>
               <h2>تنظیمات مجموعه</h2>
               <div className="setting-row">
                 <div>
@@ -250,24 +294,28 @@ export function Dashboard() {
               </div>
               <div className="setting-row">
                 <div>
-                  <strong>نام و لوگوی مجموعه</strong>
+                  <strong>نام، لوگو و رنگ برند</strong>
                   <p className="muted">
-                    در نسخهٔ عملیاتی قابل تنظیم خواهد بود.
+                    شخصی‌سازی سازمان پس از اتصال حساب مدیر فعال می‌شود.
                   </p>
                 </div>
-                <span className="person-role">به‌زودی</span>
+                <span className="soft-badge">در مرحلهٔ بعد</span>
               </div>
               <div className="setting-row">
                 <div>
-                  <strong>مجوزها و ضبط کلاس</strong>
+                  <strong>دسترسی، ضبط و نگهداری داده</strong>
                   <p className="muted">
-                    در نسخهٔ عملیاتی، مدیر مجموعه این تنظیمات را مشخص می‌کند.
+                    این سیاست‌ها باید در سرور سازمان اعمال شوند.
                   </p>
                 </div>
                 <ShieldCheck size={24} className="muted" />
               </div>
             </section>
           )}
+          <footer className="management-footer">
+            <span>همیار · ساده برای همه</span>
+            <span>زیرساخت وب واقعی؛ امکانات سازمانی در حال توسعه</span>
+          </footer>
         </main>
       </div>
     </div>

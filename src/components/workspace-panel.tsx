@@ -176,7 +176,7 @@ export function WorkspacePanel({
           </p>
         </div>
         <div className="account-actions">
-          {active && active.role !== "member" && mfa && (
+          {active && active.role !== "member" && (
             <Link href="/supervisor" className="button secondary">
               مرکز نظارت
             </Link>
@@ -196,20 +196,6 @@ export function WorkspacePanel({
           </button>
         </div>
       </div>
-      {!mfa && (
-        <div className="setup-note">
-          <ShieldCheck size={23} />
-          <div>
-            <strong>یک قدم تا مدیریت امن</strong>
-            <p>
-              برای ساخت مجموعه یا دسترسی مدیریتی، MFA همین نشست باید تأیید شود.
-            </p>
-            <Link className="text-action" href="/account/security">
-              فعال‌کردن تأیید دومرحله‌ای <ArrowLeft size={17} />
-            </Link>
-          </div>
-        </div>
-      )}
       <p role="status" className="draft-notice">
         {loading ? "در حال دریافت مجموعه‌ها…" : notice}
       </p>
@@ -299,7 +285,7 @@ export function WorkspacePanel({
           members={members}
         />
       )}
-      {active && active.role !== "member" && mfa && (
+      {active && active.role !== "member" && (
         <>
           <section className="ops-panel">
             <div className="section-heading">

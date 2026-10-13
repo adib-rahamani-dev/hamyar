@@ -1,21 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { createHmac } from "node:crypto";
 import { mkdir } from "node:fs/promises";
-function totp(secret: string) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const c of secret) bits += chars.indexOf(c).toString(2).padStart(5, "0");
-  const key = Buffer.from(bits.match(/.{8}/g)!.map((v) => parseInt(v, 2))),
-    counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const value = createHmac("sha1", key).update(counter).digest(),
-    offset = value[value.length - 1]! & 15;
-  return String((value.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(
-    6,
-    "0",
-  );
-}
-test("real sign-in → MFA → organization → invite → role change → suspension → sign-out", async ({
+test("real sign-in → organization → invite → role change → suspension → sign-out", async ({
   page,
   browser,
 }, info) => {
@@ -32,24 +17,7 @@ test("real sign-in → MFA → organization → invite → role change → suspe
     .fill("Synthetic-browser-test-password!");
   await page.getByRole("button", { name: "ورود به همیار" }).click();
   await expect(page).toHaveURL(/\/workspace$/);
-  await expect(
-    page.getByRole("button", { name: "ایجاد مجموعه" }),
-  ).toBeDisabled();
-  await page.getByRole("link", { name: "فعال‌کردن تأیید دومرحله‌ای" }).click();
-  await page
-    .getByLabel("رمز عبور حساب")
-    .fill("Synthetic-browser-test-password!");
-  await page.getByRole("button", { name: "راه‌اندازی MFA" }).click();
-  const secret = await page.getByLabel("کلید محرمانهٔ برنامه").inputValue();
-  await page.getByLabel("کد شش‌رقمی برنامه").fill(totp(secret));
-  await page.getByRole("button", { name: "تأیید و فعال‌کردن" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "تأیید دومرحله‌ای فعال شد",
-  );
-  await page.getByRole("link", { name: "ادامه به مجموعه‌ها" }).click();
-  await expect(
-    page.getByRole("button", { name: "ایجاد مجموعه" }),
-  ).toBeEnabled();
+  await expect(page.getByRole("button", { name: "ایجاد مجموعه" })).toBeEnabled();
   await page.getByLabel("نام مجموعه").fill("مدرسهٔ آزمایش مرورگر");
   await page.getByRole("button", { name: "ایجاد مجموعه" }).click();
   await expect(

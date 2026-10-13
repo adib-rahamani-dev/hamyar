@@ -7,14 +7,13 @@ export function AccountError({ reset }: { reset: () => void }) {
       <section className="ops-panel auth-card">
         <h1>اطلاعات فعلاً در دسترس نیست</h1>
         <p className="section-note">
-          اتصال پایگاه داده یا آماده‌بودن زیرساخت حساب را بررسی کنید. دادهٔ
-          نمونه جای اطلاعات حساب نمایش داده نمی‌شود.
+          اطلاعات حساب فعلاً دریافت نشد. اتصال را بررسی کنید و دوباره تلاش کنید.
         </p>
         <div className="auth-links">
           <button className="button primary" onClick={reset}>
             تلاش دوباره
           </button>
-          <Link href="/demo">فضای نمونه</Link>
+          <Link href="/account/sign-in">ورود به حساب</Link>
         </div>
       </section>
     </AccountFrame>

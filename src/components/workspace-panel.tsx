@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { authClient } from "@/modules/identity/client";
+import { RealRoomsPanel } from "./real-rooms-panel";
 
 type Organization = { id: string; name: string; kind: string; role: string };
 type Member = {
@@ -171,13 +172,18 @@ export function WorkspacePanel({
     <div className="real-workspace">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">حساب واقعی · {name}</span>
+          <span className="eyebrow">حساب شما · {name}</span>
           <h1>مجموعه‌های شما</h1>
           <p className="muted">
             دادهٔ پایدار؛ هر مجموعه با اعضا و دسترسی مستقل.
           </p>
         </div>
         <div className="account-actions">
+          {active && active.role !== "member" && mfa && (
+            <Link href="/supervisor" className="button secondary">
+              مرکز نظارت
+            </Link>
+          )}
           <Link href="/account/security" className="button secondary">
             <ShieldCheck size={18} /> امنیت حساب
           </Link>
@@ -255,7 +261,8 @@ export function WorkspacePanel({
             )
           )}
           <p className="section-note">
-            ساخت کلاس، تخصیص مدرس و تماس زنده در برش بعدی اضافه می‌شوند.
+            اعضا و اتاق‌ها در همین مجموعه نگهداری می‌شوند. مدل تحصیلی و اتصال
+            رسانه هنوز در حال تکمیل‌اند.
           </p>
         </section>
         <section className="ops-panel">
@@ -287,6 +294,14 @@ export function WorkspacePanel({
           </form>
         </section>
       </div>
+      {active && (active.role === "member" || mfa) && (
+        <RealRoomsPanel
+          key={active.id}
+          organizationId={active.id}
+          manager={active.role !== "member"}
+          members={members}
+        />
+      )}
       {active && active.role !== "member" && mfa && (
         <>
           <section className="ops-panel">

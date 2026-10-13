@@ -1,6 +1,6 @@
 # راه‌اندازی حساب و سازمان واقعی
 
-این برش در `/account/sign-in`، `/account/security` و `/workspace` اجرا می‌شود. `/demo` و صفحات نمونه مستقل‌اند؛ فعال‌کردن هویت، مسیر `/` را به فضای واقعی هدایت می‌کند. اطلاعات واقعی با دادهٔ دمو مخلوط نمی‌شوند.
+این برش در `/account/sign-in`، `/account/security`، `/workspace` و `/supervisor` اجرا می‌شود. ورودی عمومی به فضای مجموعه می‌رود؛ دمو در production/Vercel نمایش داده نمی‌شود. اتاق و اعضا از اطلاعات همان سازمان خوانده می‌شوند.
 
 ## تنظیمات لازم
 
@@ -13,7 +13,7 @@
 | RESEND_API_KEY         | کلید سرویس ایمیل واقعی                                                  |
 | AUTH_EMAIL_FROM        | فرستنده از دامنهٔ تأییدشده در Resend                                    |
 
-مقادیر محرمانه را در چت، Git یا خروجی فرمان قرار ندهید. فایل `.env.local` موجود را با template بازنویسی نکنید؛ فقط کلیدهای لازم را اضافه کنید. template credentialهای توسعهٔ localhost دارد و برای production مناسب نیست. این کار هیچ کلید production جدیدی ایجاد نکرده است.
+مقادیر محرمانه را در چت، Git یا خروجی فرمان قرار ندهید. فایل `.env.local` موجود را با template بازنویسی نکنید؛ فقط کلیدهای لازم را اضافه کنید. template credentialهای توسعهٔ localhost دارد و برای production مناسب نیست. کلید نشست و رمز نقش production با اجازهٔ صریح کاربر ساخته و در Vercel محرمانه ثبت شدند؛ فایل تنظیم اپراتور در `.vercel` از Git و upload کنار گذاشته می‌شود.
 
 ## پایگاه داده
 
@@ -77,7 +77,9 @@ npm run local:identity
 
 در بررسی 2026-10-13، [Neon Free](https://neon.com/pricing) برای هر پروژه 1 GB storage و 100 CU-hours compute دارد. [Resend Free](https://resend.com/pricing) تا 3,000 ایمیل در ماه با سقف 100 در روز دارد؛ دامنهٔ فرستنده باید تأیید شود. شرایط و سقف‌ها را هنگام ایجاد منبع دوباره بررسی کنید. Free تضمین ظرفیت یا پایداری production نیست. این سرویس‌ها سرور LiveKit/TURN/ضبط فراهم نمی‌کنند.
 
-در پروژهٔ Vercel فعلی هیچ resource یا env مرتبط متصل نبود. برای فعال‌سازی عمومی، حساب/منابع، دامنهٔ ایمیل، نقش‌های DB و متغیرها باید واقعی تنظیم شوند؛ سپس migration، آزمون readiness، preview و انتشار انجام شود. ساخت حساب یا پذیرش شرایط provider در این مرحله انجام نشده است.
+در بررسی اولیهٔ Vercel، resource یا env هویت موجود نبود. در ادامهٔ 2026-10-13 با اجازهٔ کاربر، Neon Free اختصاصی hamyar-production ایجاد شد؛ migrationها اعمال و نقش hamyar_app مستقل غیرمالک با اتصال pooled و TLS verify-full بررسی شد. DATABASE_URL و BETTER_AUTH_SECRET و BETTER_AUTH_URL در Vercel ثبت شدند. credential مالک از runtime حذف شد و تنها در تنظیم خصوصی اپراتور نگهداری می‌شود. دیتابیس تولید با fixture seed نشده است. [ADR 0004](adr/0004-public-entry-and-managed-postgres.md) جزئیات را ثبت می‌کند.
+
+دامنهٔ ایمیل هنوز آماده نیست؛ کاربر ورود ایمیلی را حفظ و تهیهٔ دامنه را به بعد موکول کرد. نبود سرویس ایمیل signup/reset را در UI و سرور غیرفعال می‌کند و account ناقص ساخته نمی‌شود. LiveKit Cloud هنوز نیازمند حساب/پروژه و LIVEKIT_URL، LIVEKIT_API_KEY و LIVEKIT_API_SECRET واقعی در Vercel است. حذف دمو از انتشار عمومی به معنی تکمیل رسانه و ضبط نیست.
 
 ## محدودیت باقی‌مانده
 

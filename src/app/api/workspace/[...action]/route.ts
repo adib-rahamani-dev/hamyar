@@ -1,6 +1,7 @@
 import { getIdentity } from "@/modules/identity/runtime.server";
 import { createTenancy, DomainError } from "@/modules/tenancy/service";
 import { ZodError } from "zod";
+import { createRoomRepository } from "@/modules/rooms/repository";
 
 export const dynamic = "force-dynamic";
 async function handle(
@@ -17,6 +18,7 @@ async function handle(
     )
       throw new DomainError("ORIGIN_DENIED");
     const service = createTenancy(pool, auth);
+    const rooms = createRoomRepository(pool, auth);
     const who = await service.actor(request.headers);
     const limited = await pool.query(
       "INSERT INTO workspace_rate_limit(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET count=CASE WHEN workspace_rate_limit.started_at<=now()-interval '1 minute' THEN 1 ELSE workspace_rate_limit.count+1 END,started_at=CASE WHEN workspace_rate_limit.started_at<=now()-interval '1 minute' THEN now() ELSE workspace_rate_limit.started_at END WHERE workspace_rate_limit.count<60 OR workspace_rate_limit.started_at<=now()-interval '1 minute' RETURNING user_id",
@@ -50,7 +52,24 @@ async function handle(
     }
     let result: unknown;
     const path = action.join("/");
-    if (request.method === "GET" && path === "organizations")
+    if (request.method === "GET" && path === "rooms")
+      result = await rooms.list(request.headers);
+    else if (request.method === "POST" && path === "rooms")
+      result = await rooms.create(request.headers, body);
+    else if (
+      request.method === "PATCH" &&
+      action[0] === "rooms" &&
+      action.length === 2
+    )
+      result = await rooms.update(request.headers, action[1]!, body);
+    else if (
+      request.method === "POST" &&
+      action[0] === "rooms" &&
+      action[2] === "assignments" &&
+      action.length === 3
+    )
+      result = await rooms.assign(request.headers, action[1]!, body);
+    else if (request.method === "GET" && path === "organizations")
       result = await service.list(request.headers);
     else if (request.method === "POST" && path === "organizations")
       result = await service.create(request.headers, body);

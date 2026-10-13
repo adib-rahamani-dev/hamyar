@@ -113,7 +113,7 @@ export function AuthPanel({
       <p className="muted">
         {mode === "two-factor"
           ? "کد برنامهٔ تأییدکننده یا کد بازیابی را وارد کنید."
-          : "برای مدیریت مجموعهٔ واقعی، وارد حساب خود شوید."}
+          : "برای مدیریت مجموعه‌های خود، وارد حساب شوید."}
       </p>
       {localMailbox && (
         <div className="setup-note">

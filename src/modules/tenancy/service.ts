@@ -109,6 +109,24 @@ export function createTenancy(pool: Pool, auth: Identity) {
   }
   return {
     actor,
+    async inOrganization<T>(
+      headers: Headers,
+      manage: boolean,
+      run: (
+        client: PoolClient,
+        current: Actor & { organizationId: string; role: Membership["role"] },
+      ) => Promise<T>,
+    ) {
+      const who = await actor(headers);
+      return transaction(who, async (client) => {
+        const member = await scope(client, who, manage);
+        return run(client, {
+          ...who,
+          organizationId: who.organizationId!,
+          role: member.role,
+        });
+      });
+    },
     async list(headers: Headers) {
       const who = await actor(headers);
       return transaction(who, async (c) => ({

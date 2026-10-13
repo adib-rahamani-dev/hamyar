@@ -1,5 +1,6 @@
 .git
 .next
+.vercel
 .artifacts
 test-results
 playwright-report

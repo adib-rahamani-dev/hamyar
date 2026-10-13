@@ -25,8 +25,8 @@ export function AccountFrame({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <footer className="account-footer">
-        <Link href="/demo">
-          <ArrowRight size={16} /> بازگشت به فضای نمونه
+        <Link href="/workspace">
+          <ArrowRight size={16} /> مجموعه‌های شما
         </Link>
         <span>ورود امن؛ فضای مستقل هر مجموعه</span>
       </footer>

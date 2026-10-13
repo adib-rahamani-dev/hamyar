@@ -27,6 +27,9 @@ export function getIdentity() {
     url: config.data.BETTER_AUTH_URL,
     secret: config.data.BETTER_AUTH_SECRET,
     localMailbox: developmentMailboxEnabled(process.env),
+    emailConfigured:
+      developmentMailboxEnabled(process.env) ||
+      (!!process.env.RESEND_API_KEY && !!process.env.AUTH_EMAIL_FROM),
     secure: new URL(config.data.BETTER_AUTH_URL).protocol === "https:",
     sendMail: sendAuthMail,
   });

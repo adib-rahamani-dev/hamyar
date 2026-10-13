@@ -16,6 +16,7 @@ export function createIdentity(
     secret: string;
     secure: boolean;
     localMailbox?: boolean;
+    emailConfigured?: boolean;
     sendMail: (mail: AuthMail) => Promise<void>;
   },
 ) {
@@ -70,6 +71,17 @@ export function createIdentity(
     ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (
+          config.emailConfigured === false &&
+          [
+            "/sign-up/email",
+            "/request-password-reset",
+            "/send-verification-email",
+          ].includes(ctx.path)
+        )
+          throw new APIError("SERVICE_UNAVAILABLE", {
+            message: "AUTH_EMAIL_NOT_CONFIGURED",
+          });
         if (ctx.path !== "/sign-up/email") return;
         const value = z
           .object({

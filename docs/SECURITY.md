@@ -59,6 +59,8 @@ API workspace Origin معتبر، JSON strict، payload حداکثر 8KB و 60 �
 
 ## قبل از production
 
+ورودی production دیگر نمونه را جایگزین حساب نمی‌کند. شش جدول سازمان/عضویت/دعوت/audit/اتاق/تخصیص با FORCE RLS محافظت می‌شوند. اعتبارنامهٔ مالک Neon در runtime وب قرار ندارد. signup و recovery در نبود ارسال ایمیل در سرور نیز 503 می‌دهند؛ API خام نمی‌تواند account ناقص بسازد. کلیدهای production با اجازهٔ صریح کاربر ساخته و فقط در تنظیمات محرمانه نگهداری شدند. نمونهٔ UI با flag توسعه در Vercel قابل فعال‌سازی نیست.
+
 صندوق توسعه فقط با flag صریح، NODE_ENV=development، loopback و DB آزمون فعال است؛ روی Vercel و production غیرفعال است. signup محلی فقط ایمیل `.test` می‌پذیرد؛ tokenها در حافظهٔ محلی با TTL محدود هستند. این محیط باید فقط روی دستگاه توسعه و با دادهٔ مصنوعی استفاده شود. keys fixture برای HTTPS عمومی رد می‌شوند؛ request logging توسعه خاموش است تا URLهای verification/recovery چاپ نشوند.
 
 احراز هویت واقعی و MFA، negative tests بین دو tenant، access revocation، origin/rate limits، TLS و TURN، CSP، اسکن فایل، backup و restore عملی، load test رسانه و ضبط، سیاست حریم خصوصی و بررسی نفوذ مستقل لازم‌اند.

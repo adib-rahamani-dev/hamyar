@@ -111,6 +111,25 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+.host-facts {
+  display: grid;
+  gap: 16px;
+  margin-block: 24px;
+}
+.host-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 14px;
+}
+.host-facts dt {
+  color: var(--muted);
+}
+.host-facts dd {
+  margin: 0;
+  text-align: end;
 }
 .real-workspace {
   display: grid;
@@ -169,8 +188,12 @@
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-.real-person > div {
+.real-person > div,
+.real-room-row > div {
   min-width: 0;
+}
+.real-room-row strong {
+  overflow-wrap: anywhere;
 }
 .real-person bdi {
   overflow-wrap: anywhere;

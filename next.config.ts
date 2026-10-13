@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   logging: { incomingRequests: false, serverFunctions: false },
+  devIndicators: process.env.HAMYAR_LOCAL_DEMOS === "1" ? false : undefined,
   async headers() {
     return [
       {

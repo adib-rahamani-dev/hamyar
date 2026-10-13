@@ -5,6 +5,7 @@ import { migrate } from "../../scripts/migrate.mjs";
 import { createIdentity, type AuthMail } from "../../src/modules/identity/auth";
 import { createTenancy } from "../../src/modules/tenancy/service";
 import { assertRuntimeRole } from "../../src/modules/identity/database-role";
+import { createRoomRepository } from "../../src/modules/rooms/repository";
 
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -399,6 +400,130 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       0,
     );
     expect((await pool.query("SELECT * FROM invitation")).rows).toHaveLength(0);
+  }, 30000);
+  it("blocks account creation and recovery at the server when email delivery is unavailable", async () => {
+    const disabled = createIdentity(pool, {
+      url: base,
+      secret: "integration-email-disabled-fixture-only",
+      secure: false,
+      emailConfigured: false,
+      sendMail: async () => {
+        throw Error("Should not send");
+      },
+    });
+    const email = `disabled-${randomUUID()}@example.test`;
+    const response = await disabled.handler(
+      new Request(`${base}/api/auth/sign-up/email`, {
+        method: "POST",
+        headers: { origin: base, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Blocked account", email, password }),
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(
+      (await pool.query("SELECT id FROM auth_user WHERE email=$1", [email]))
+        .rows,
+    ).toHaveLength(0);
+    const recovery = await disabled.handler(
+      new Request(`${base}/api/auth/request-password-reset`, {
+        method: "POST",
+        headers: { origin: base, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          redirectTo: `${base}/account/new-password`,
+        }),
+      }),
+    );
+    expect(recovery.status).toBe(503);
+  });
+  it("persists rooms and assignments with tenant separation, server-derived roles and member admission", async () => {
+    const a = await account("RoomOwnerA"),
+      b = await account("RoomOwnerB"),
+      student = await account("RoomStudent", false);
+    const repo = createRoomRepository(pool, auth);
+    await tenancy.create(a.client.headers, {
+      name: "Room Organization A",
+      kind: "school",
+    });
+    await tenancy.create(b.client.headers, {
+      name: "Room Organization B",
+      kind: "company",
+    });
+    const invite = await tenancy.invite(a.client.headers, {
+      email: student.email,
+      role: "member",
+    });
+    await tenancy.acceptInvite(student.client.headers, invite.token);
+    await expect(
+      repo.create(student.client.headers, { title: "Unauthorized room" }),
+    ).rejects.toMatchObject({ code: "MANAGER_REQUIRED" });
+    const room = await repo.create(a.client.headers, {
+      title: "Persistent room",
+    });
+    expect(await repo.list(b.client.headers)).toHaveLength(0);
+    expect(await repo.list(student.client.headers)).toHaveLength(0);
+    await expect(
+      repo.supervision(student.client.headers),
+    ).rejects.toMatchObject({ code: "MANAGER_REQUIRED" });
+    expect((await repo.supervision(b.client.headers)).rooms).toHaveLength(0);
+    expect((await repo.supervision(a.client.headers)).rooms[0]?.id).toBe(
+      room.id,
+    );
+    await expect(repo.context(b.client.headers, room.id)).rejects.toMatchObject(
+      { code: "NOT_FOUND" },
+    );
+    await expect(
+      repo.update(b.client.headers, room.id, { state: "open" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const foreign = (await tenancy.members(b.client.headers))[0]!;
+    await expect(
+      repo.assign(a.client.headers, room.id, {
+        membershipId: foreign.id,
+        role: "attendee",
+        admitted: true,
+      }),
+    ).rejects.toMatchObject({ code: "MEMBERSHIP_REQUIRED" });
+    const studentId = (await auth.api.getSession({
+      headers: student.client.headers,
+    }))!.user.id;
+    const member = (await tenancy.members(a.client.headers)).find(
+      (m) => m.userId === studentId,
+    )!;
+    await repo.assign(a.client.headers, room.id, {
+      membershipId: member.id,
+      role: "attendee",
+      admitted: true,
+    });
+    expect(await repo.list(student.client.headers)).toHaveLength(1);
+    await expect(
+      repo.context(student.client.headers, room.id),
+    ).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
+    await repo.update(a.client.headers, room.id, { state: "open" });
+    const context = await repo.context(student.client.headers, room.id);
+    expect(context.actor.organizationRole).toBe("member");
+    expect(context.assignment?.role).toBe("attendee");
+    expect(context.mediaApproval).toBeNull();
+    await repo.update(a.client.headers, room.id, { locked: true });
+    await expect(
+      repo.context(student.client.headers, room.id),
+    ).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
+    await expect(
+      repo.assign(a.client.headers, room.id, {
+        membershipId: member.id,
+        role: "presenter",
+        admitted: true,
+      }),
+    ).rejects.toMatchObject({ code: "ASSIGN_BEFORE_ROOM_START" });
+    await repo.update(a.client.headers, room.id, { state: "ended" });
+    await expect(repo.context(a.client.headers, room.id)).rejects.toMatchObject(
+      { code: "ROOM_ACCESS_DENIED" },
+    );
+    expect((await pool.query("SELECT * FROM meeting_room")).rows).toHaveLength(
+      0,
+    );
+    expect(
+      (await pool.query("SELECT * FROM room_assignment")).rows,
+    ).toHaveLength(0);
   }, 30000);
   it("cancels invitations and makes sign-out revoke an already issued session", async () => {
     const owner = await account("Owner"),

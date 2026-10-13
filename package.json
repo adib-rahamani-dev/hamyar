@@ -21,6 +21,7 @@
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:identity:e2e": "playwright test --config playwright.identity.config.ts",
+    "test:public:e2e": "playwright test --config playwright.public.config.ts",
     "local:identity": "node --env-file-if-exists=.env.identity.local scripts/local-identity.mjs"
   },
   "dependencies": {

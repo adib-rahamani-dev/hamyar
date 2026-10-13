@@ -74,6 +74,25 @@ test("real sign-in → MFA → organization → invite → role change → suspe
   await expect(
     page.getByRole("heading", { name: "اعضای مدرسهٔ آزمایش مرورگر" }),
   ).toBeVisible();
+  await page.getByLabel("نام اتاق").fill("اتاق آزمون پایدار");
+  await page.getByRole("button", { name: "ثبت اتاق" }).click();
+  await expect(
+    page.getByText("اتاق آزمون پایدار", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByText("اتاق آزمون پایدار", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "مرکز نظارت", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "مرکز نظارت", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("اتاق آزمون پایدار", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/۱ عضو فعال/)).toBeVisible();
+  await expect(page.locator(".supervisor-room")).toHaveCount(0);
+  await page.getByRole("link", { name: "مجموعه‌های شما", exact: true }).click();
   await page.getByLabel("ایمیل فرد دعوت‌شده").fill(guest);
   await page.getByRole("button", { name: "ساخت دعوت" }).click();
   const invite = await page
@@ -101,7 +120,9 @@ test("real sign-in → MFA → organization → invite → role change → suspe
   await expect(page.locator(".real-person")).toHaveCount(2);
   page.on("dialog", (dialog) => void dialog.accept());
   await page.getByLabel("نقش عضو آزمایشی").selectOption("supervisor");
-  await expect(page.getByRole("status")).toContainText("نقش عضو تغییر کرد");
+  await expect(
+    page.getByRole("status").filter({ hasText: "نقش عضو تغییر کرد" }),
+  ).toBeVisible();
   const denied = await student.request.get(
     "http://127.0.0.1:3100/api/workspace/members",
   );

@@ -11,7 +11,7 @@ export default async function WorkspacePage() {
     return (
       <AccountFrame>
         <section className="ops-panel">
-          <h1>فضای واقعی مجموعه</h1>
+          <h1>مجموعه‌های شما</h1>
           <p className="section-note">
             زیرساخت حساب و پایگاه داده هنوز روی این میزبان تنظیم نشده است.
           </p>

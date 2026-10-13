@@ -58,12 +58,7 @@ export function AuthPanel({
                   email,
                   redirectTo: "/account/new-password",
                 })
-              : mode === "new-password"
-                ? await authClient.resetPassword({
-                    token,
-                    newPassword: password,
-                  })
-                : await authClient.resetPassword({ token, newPassword: password });
+              : await authClient.resetPassword({ token, newPassword: password });
       if (result.error) {
         setNotice(
           result.error.code === "EMAIL_NOT_VERIFIED"
@@ -99,9 +94,7 @@ export function AuthPanel({
       </span>
       <span className="eyebrow">حساب شما در همیار</span>
       <h1>{titles[mode]}</h1>
-      <p className="muted">
-        "برای مدیریت مجموعه‌های خود، وارد حساب شوید."
-      </p>
+      <p className="muted">برای مدیریت مجموعه‌های خود، وارد حساب شوید.</p>
       {localMailbox && (
         <div className="setup-note">
           <p>

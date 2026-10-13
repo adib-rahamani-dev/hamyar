@@ -37,7 +37,8 @@ docs/                    هدف، طراحی، معماری، امنیت و تص
 Docker Desktop با Linux containers باید اجرا باشد. برای نسخهٔ عملیاتی رسانه، Linux، دامنه، TLS، TURN و پهنای باند واقعی لازم است؛ Laragon تنها محیط توسعهٔ سورس است.
 
 ```powershell
-Copy-Item .env.example .env.local
+# فقط اگر .env.local از قبل وجود ندارد:
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
 docker compose config --quiet
 docker compose up -d
 ```
@@ -57,6 +58,8 @@ npm audit
 
 ## اسناد مرجع
 
+برش حساب و سازمان واقعی در `/account/sign-in`، `/account/security` و `/workspace` ساخته شده است: ثبت‌نام/verification/reset، نشست DB، MFA، ساخت/انتخاب سازمان، اعضا و دعوت محدود. روی PostgreSQL با role غیرمالک آزموده می‌شود. در استقرار فاقد env معتبر فعال نیست؛ [راهنمای هویت](docs/IDENTITY_SETUP.md) تنظیمات و آزمون‌ها را توضیح می‌دهد. نمونهٔ قبلی در `/demo` مستقل باقی می‌ماند.
+
 پنل‌های مدیریت در `/supervisor`، `/support`، `/members` و `/settings` مسیر مستقل دارند. `/api/status` مشخصات عمومی واقعی اجرای وب را می‌دهد؛ ظرفیت رسانه و دادهٔ میزبان اتاق هنوز متصل نیستند. پشتیبانی فعلاً پیش‌نویس محلی با ذخیره/حذف و دانلود است و ارسال سروری ندارد.
 
 - [قواعد توسعه](AGENTS.md)
@@ -68,6 +71,7 @@ npm audit
 - [نقشهٔ اجرا](docs/ROADMAP.md)
 - [پرامپت جامع تکمیل تا نسخهٔ قابل استفاده](docs/BUILD_TO_PRODUCTION_PROMPT.fa.md)
 - [مرز وضعیت عمومی و پیش‌نویس پشتیبانی](docs/adr/0002-public-status-and-support-drafts.md)
+- [هویت واقعی، MFA و مرز سازمان](docs/adr/0003-identity-and-tenant-boundary.md)
 - [تصمیم معماری نخست](docs/adr/0001-platform-foundation.md)
 
 رسانه با WebRTC و LiveKit SFU مستقل از سرور پنل عبور خواهد کرد. سوپروایزر در محدودهٔ سازمان خودش کنترل دارد. رمزنگاری انتقال با E2EE فرق دارد؛ حالت E2EE و ضبط سمت سرور نیازمند تصمیم مستقل‌اند. هیچ ادعای نفوذناپذیری مطلق یا ظرفیت اندازه‌گیری‌نشده نداریم.

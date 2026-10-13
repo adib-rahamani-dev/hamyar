@@ -314,6 +314,9 @@ export function Dashboard({ initialView = "classes" }: { initialView?: View }) {
           )}
           <footer className="management-footer">
             <span>همیار · ساده برای همه</span>
+            <Link href="/workspace" className="text-action">
+              ورود به فضای واقعی مجموعه
+            </Link>
             <span>زیرساخت وب واقعی؛ امکانات سازمانی در حال توسعه</span>
           </footer>
         </main>

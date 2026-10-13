@@ -49,6 +49,16 @@ HTTPS/WSS و DTLS-SRTP در انتقال، encryption at rest در storage. E2EE
 
 فرم پشتیبانی هیچ درخواست ثبت سروری یا ارسال پیام ندارد. ذخیرهٔ متن در مرورگر فقط با اقدام کاربر، با schema نسخه‌دار و سقف طول انجام می‌شود؛ حذف و دانلود قابل دسترس است. UI دربارهٔ دستگاه مشترک و پرهیز از اطلاعات حساس اطلاع می‌دهد. پیش از ثبت تیکت سروری، session، tenant scope، idempotency، origin/rate limit و persistence خصوصی لازم‌اند.
 
+## هویت و سازمان — کنترل‌های پیاده‌شده
+
+Better Auth، ایمیل تأییدشده، نشست DB، cookie HttpOnly/SameSite/Secure روی HTTPS و MFA با proof همان نشست پیاده و روی PostgreSQL آزموده شدند. cookie cache فعال نیست؛ خروج/revoke/reset نشست‌های مربوط را باطل می‌کنند. کلید TOTP و recovery فقط پس از اقدام کاربر در صفحهٔ امنیت نمایش داده می‌شوند و در localStorage یا telemetry ذخیره نمی‌شوند. ورود دستی TOTP فعلاً جای QR است.
+
+Runtime غیرمالک و بدون bypass/superuser است؛ role ناامن رد می‌شود. جدول‌های سازمانی FORCE RLS و context تراکنشی دارند. org/role از session و membership تازه تعیین می‌شود. تعلیق/تغییر نقش روی درخواست بعدی اثر می‌کند؛ publication رسانهٔ برقرار هنوز وجود ندارد و revocation SFU حل نشده است. audit از app UPDATE/DELETE ندارد. invitation فقط hash نگه می‌دارد و token fragment به سرور در URL ارسال نمی‌شود.
+
+API workspace Origin معتبر، JSON strict، payload حداکثر 8KB و 60 درخواست در دقیقه به‌ازای user با counter مشترک DB دارد. کتابخانه auth از rate limit پایگاه داده استفاده می‌کند؛ آستانه‌های پیش‌فرض آن باید در شبکهٔ واقعی و NAT مدرسه سنجیده شوند. logger کتابخانه خاموش است؛ endpointها خطای خام SQL یا credential برنمی‌گردانند. کلاس، چت، تخته، فایل، تیکت و ضبط هنوز تست tenant عملیاتی ندارند؛ این برش جای آزمون نفوذ مستقل production نیست.
+
 ## قبل از production
+
+صندوق توسعه فقط با flag صریح، NODE_ENV=development، loopback و DB آزمون فعال است؛ روی Vercel و production غیرفعال است. signup محلی فقط ایمیل `.test` می‌پذیرد؛ tokenها در حافظهٔ محلی با TTL محدود هستند. این محیط باید فقط روی دستگاه توسعه و با دادهٔ مصنوعی استفاده شود. keys fixture برای HTTPS عمومی رد می‌شوند؛ request logging توسعه خاموش است تا URLهای verification/recovery چاپ نشوند.
 
 احراز هویت واقعی و MFA، negative tests بین دو tenant، access revocation، origin/rate limits، TLS و TURN، CSP، اسکن فایل، backup و restore عملی، load test رسانه و ضبط، سیاست حریم خصوصی و بررسی نفوذ مستقل لازم‌اند.

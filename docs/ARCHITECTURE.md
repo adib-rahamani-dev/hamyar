@@ -4,17 +4,17 @@
 
 ## انتخاب فناوری
 
-| لایه       | انتخاب                                       | دلیل و وضعیت                                                          |
-| ---------- | -------------------------------------------- | --------------------------------------------------------------------- |
-| برنامه     | Next.js App Router، React، TypeScript strict | نصب‌شده؛ پنل و API در یک codebase، بارگذاری تدریجی اتاق               |
-| طراحی      | CSS tokens، Lucide، Vazirmatn محلی           | نصب‌شده؛ RTL و دو تم، بدون وابستگی به CDN فونت                        |
-| رسانه      | LiveKit، WebRTC، SFU                         | SDK نصب‌شده؛ server قابل میزبانی شخصی با Redis و TURN                 |
-| داده       | PostgreSQL + Drizzle                         | PostgreSQL در compose توسعه تعریف شده؛ ORM و مدل نهایی در فاز داده    |
-| احراز هویت | Better Auth + سازمان + MFA                   | انتخاب معماری، هنوز نصب یا متصل نیست؛ نقش‌های آموزشی در دامنهٔ خودمان |
-| موقت/صف    | Redis + BullMQ                               | Redis در compose تعریف شده؛ صف پس از اولین worker                     |
-| تخته       | SVG UI اولیه؛ Yjs + WebSocket provider       | تختهٔ فعلی محلی است؛ Yjs، persistence و ACL در فاز همگام‌سازی         |
-| ضبط        | LiveKit Egress + worker + S3 سازگار          | انتخاب معماری؛ Egress و storage هنوز راه‌اندازی نشده‌اند              |
-| پایش       | OpenTelemetry، Prometheus و گزارش خطا        | برنامهٔ فاز production؛ بدون جمع‌آوری محتوای خصوصی                    |
+| لایه       | انتخاب                                       | دلیل و وضعیت                                                                      |
+| ---------- | -------------------------------------------- | --------------------------------------------------------------------------------- |
+| برنامه     | Next.js App Router، React، TypeScript strict | نصب‌شده؛ پنل و API در یک codebase، بارگذاری تدریجی اتاق                           |
+| طراحی      | CSS tokens، Lucide، Vazirmatn محلی           | نصب‌شده؛ RTL و دو تم، بدون وابستگی به CDN فونت                                    |
+| رسانه      | LiveKit، WebRTC، SFU                         | SDK نصب‌شده؛ server قابل میزبانی شخصی با Redis و TURN                             |
+| داده       | PostgreSQL + Drizzle                         | نصب‌شده؛ schema/migration هویت و سازمان و آزمون PG واقعی؛ مدل آموزش در مرحلهٔ بعد |
+| احراز هویت | Better Auth + دامنهٔ سازمان + MFA            | نصب‌شده و آزمودهٔ محلی؛ اتصال عمومی نیازمند env و ایمیل معتبر                     |
+| موقت/صف    | Redis + BullMQ                               | Redis در compose تعریف شده؛ صف پس از اولین worker                                 |
+| تخته       | SVG UI اولیه؛ Yjs + WebSocket provider       | تختهٔ فعلی محلی است؛ Yjs، persistence و ACL در فاز همگام‌سازی                     |
+| ضبط        | LiveKit Egress + worker + S3 سازگار          | انتخاب معماری؛ Egress و storage هنوز راه‌اندازی نشده‌اند                          |
+| پایش       | OpenTelemetry، Prometheus و گزارش خطا        | برنامهٔ فاز production؛ بدون جمع‌آوری محتوای خصوصی                                |
 
 NestJS می‌تواند هنگام جداسازی control API اضافه شود؛ در شروع نگهداری دو backend برای یک تیم کوچک فایدهٔ اثبات‌شده ندارد. Kubernetes و چند منطقه پس از اندازه‌گیری ظرفیت، هزینه و نیاز دسترس‌پذیری.
 
@@ -71,6 +71,10 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 ماژول `operations` فقط projection عمومی و allowlist‌شدهٔ اجرای وب را تولید می‌کند. `/api/status` اطلاعات نشست یا سازمان ندارد، cache نمی‌شود و سلامت رسانه یا ظرفیت را ادعا نمی‌کند. limit/used/remaining تا اتصال دادهٔ واقعی null هستند. API مصرف، مشخصات خصوصی و کنترل اتاق باید در فاز identity/data با نقش معتبر اضافه شوند.
 
 ماژول `support` در این مرحله فقط schema پیش‌نویس نسخه‌دار دارد؛ فرم با اقدام کاربر متن را در مرورگر ذخیره/حذف و دانلود می‌کند. storage یا mutation سروری وجود ندارد. تیکت آینده مدل سازمانی و pipeline ثبت/پاسخ مستقل با audit و idempotency خواهد داشت. [ADR 0002](adr/0002-public-status-and-support-drafts.md) مرز این مرحله را ثبت می‌کند.
+
+## هویت و مرز سازمان
+
+`identity` factory کتابخانه و schema Drizzle دارد؛ runtime در ماژول server-only و با اتصال lazy ساخته می‌شود. `tenancy` سازمان/عضویت/دعوت و audit را در transaction با context RLS اجرا می‌کند. اتصال runtime غیرمالک است و role ناامن فعال نمی‌شود؛ migration اتصال مالک جدا دارد. نشست با DB و بدون cookie cache بررسی می‌شود؛ MFA روی نشست تازه proof دارد، نه فقط روی user. root پس از تنظیم هویت به `/workspace` می‌رود و `/demo` مستقل می‌ماند. [ADR 0003](adr/0003-identity-and-tenant-boundary.md) و [راهنمای اتصال](IDENTITY_SETUP.md) مرجع این برش‌اند؛ مدل کلاس/enrollment، رسانه و همهٔ APIهای آینده هنوز باید همین مرز را اعمال کنند.
 
 ## منابع تصمیم، بررسی‌شده در 2026-10-13
 

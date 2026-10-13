@@ -30,6 +30,7 @@ export function SupportPanel() {
   const [notice, setNotice] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -40,6 +41,8 @@ export function SupportPanel() {
       }
     } catch {
       /* Storage can be blocked; the form and download still work. */
+    } finally {
+      setReady(true);
     }
   }, []);
 
@@ -126,6 +129,7 @@ export function SupportPanel() {
           <label htmlFor="ticket-subject">موضوع درخواست</label>
           <input
             id="ticket-subject"
+            disabled={!ready}
             value={draft.subject}
             maxLength={120}
             placeholder="مثلاً مشکل اتصال به کلاس"
@@ -146,6 +150,7 @@ export function SupportPanel() {
               <label htmlFor="ticket-category">دسته‌بندی</label>
               <select
                 id="ticket-category"
+                disabled={!ready}
                 value={draft.category}
                 onChange={(event) => {
                   setDraft({
@@ -164,6 +169,7 @@ export function SupportPanel() {
               <label htmlFor="ticket-priority">اولویت</label>
               <select
                 id="ticket-priority"
+                disabled={!ready}
                 value={draft.priority}
                 onChange={(event) => {
                   setDraft({
@@ -181,6 +187,7 @@ export function SupportPanel() {
           <label htmlFor="ticket-description">شرح مسئله</label>
           <textarea
             id="ticket-description"
+            disabled={!ready}
             value={draft.description}
             maxLength={4000}
             rows={7}
@@ -199,13 +206,14 @@ export function SupportPanel() {
             {errors.description ?? ""}
           </p>
           <div className="form-actions">
-            <button type="submit" className="button primary">
+            <button type="submit" className="button primary" disabled={!ready}>
               ذخیرهٔ پیش‌نویس <ArrowLeft size={18} />
             </button>
             <button
               type="button"
               className="button secondary"
               onClick={download}
+              disabled={!ready}
             >
               <Download size={18} /> دانلود فایل
             </button>
@@ -233,6 +241,7 @@ export function SupportPanel() {
             type="button"
             className="button secondary full"
             onClick={clear}
+            disabled={!ready}
           >
             <Trash2 size={18} /> پاک‌کردن پیش‌نویس
           </button>

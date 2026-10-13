@@ -37,9 +37,24 @@
 
 ## فاز یک — حساب و داده
 
-- [ ] Better Auth، session، سازمان، invitation و MFA مدیران
+### برش ۱ — هویت و سازمان، آزموده‌شده به‌صورت محلی
+
+- [x] Better Auth/Drizzle/PG واقعی؛ ثبت‌نام و تأیید ایمیل، ورود، بازیابی و خروج
+- [x] MFA با TOTP دستی و recovery یک‌بارمصرف؛ proof روی همان نشست
+- [x] ساخت مدرسه/شرکت/فضای شخصی، انتخاب سازمان معتبر، اعضا، نقش و تعلیق
+- [x] دعوت 48ساعته، hash در DB، پذیرش یک‌باره، لغو/انقضا و جلوگیری از race
+- [x] role مستقل غیرمالک برای runtime، FORCE RLS، context تراکنشی و audit غیرقابل ویرایش از app
+- [x] API خصوصی با origin/validation/سقف payload و counter پایگاه داده
+- [x] اجرای محلی بدون دامنه، صندوق ایمیل حافظه‌ای محدود به development/loopback/دادهٔ `.test`
+- [x] آزمون PostgreSQL و مسیر مرورگر دسکتاپ/موبایل؛ راه‌اندازی در [IDENTITY_SETUP.md](IDENTITY_SETUP.md)
+- [ ] اتصال PostgreSQL و فرستندهٔ ایمیل عمومی و کلید معتبر روی Vercel
+- [ ] دعوت ایمیلی خودکار، QR محلی، انتقال مالکیت و pagination
+
+ثبت‌نام/ورود از نظر کد واقعی‌اند؛ روی میزبان بدون env معتبر فعال نیستند. integration از callback ایمیل مصنوعی استفاده می‌کند و E2E حساب‌های مصنوعی ازپیش‌تأییدشده دارد؛ مسیر ثبت‌نام → صندوق محلی → تأیید → ورود نیز روی Next dev و PostgreSQL بررسی شد. ارسال به ایمیل عمومی هنوز آزموده نشده است. ماژول سازمان مستقل از plugin سازمان کتابخانه است؛ [ADR 0003](adr/0003-identity-and-tenant-boundary.md) دلیل و مرز آن را ثبت می‌کند. کل فاز داده هنوز پایان نیافته است.
+
+- [ ] فعال‌سازی عمومی هویت، نشست، سازمان و MFA با منابع production
 - [ ] Drizzle schema/migrations، membership، مدرسه، کلاس، enrollment و room
-- [ ] scoped repositories و composite FK، RLS و تست دو سازمان
+- [ ] گسترش scoped repositories، composite FK و RLS به مدل مدرسه/کلاس و آزمون دو سازمان
 - [ ] مدیریت اعضا/اتاق‌ها/برند با persistence و audit
 
 معیار پذیرش: هیچ API با تغییر شناسه به دادهٔ سازمان دیگر دسترسی ندهد؛ revocation روی نشست‌های فعال اثر کند.

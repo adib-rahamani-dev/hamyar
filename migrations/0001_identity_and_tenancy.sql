@@ -1,0 +1,35 @@
+CREATE TABLE auth_user (id text PRIMARY KEY, name text NOT NULL, email text NOT NULL UNIQUE, email_verified boolean NOT NULL DEFAULT false, image text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), two_factor_enabled boolean DEFAULT false);
+CREATE TABLE auth_session (id text PRIMARY KEY, token text NOT NULL UNIQUE, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), ip_address text, user_agent text, user_id text NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE, active_organization_id text, mfa_verified_at timestamptz);
+CREATE INDEX auth_session_user_idx ON auth_session(user_id);
+CREATE TABLE auth_account (id text PRIMARY KEY, account_id text NOT NULL, provider_id text NOT NULL, user_id text NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE, access_token text, refresh_token text, id_token text, access_token_expires_at timestamptz, refresh_token_expires_at timestamptz, scope text, password text, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE UNIQUE INDEX auth_account_provider_idx ON auth_account(provider_id,account_id);
+CREATE INDEX auth_account_user_idx ON auth_account(user_id);
+CREATE TABLE auth_verification (id text PRIMARY KEY, identifier text NOT NULL, value text NOT NULL, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX auth_verification_identifier_idx ON auth_verification(identifier);
+CREATE TABLE auth_two_factor (id text PRIMARY KEY, secret text NOT NULL, backup_codes text NOT NULL, user_id text NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE, verified boolean DEFAULT true, failed_verification_count integer DEFAULT 0, locked_until timestamptz);
+CREATE TABLE auth_rate_limit (id text PRIMARY KEY, key text NOT NULL UNIQUE, count integer NOT NULL, last_request bigint NOT NULL);
+
+CREATE TABLE organization (id text PRIMARY KEY, name text NOT NULL, kind text NOT NULL CHECK(kind IN ('school','company','personal')), created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE membership (id text PRIMARY KEY, organization_id text NOT NULL REFERENCES organization(id), user_id text NOT NULL REFERENCES auth_user(id), role text NOT NULL CHECK(role IN ('owner','admin','supervisor','member')), status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','suspended')), created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(organization_id,user_id), UNIQUE(organization_id,id));
+CREATE INDEX membership_user_idx ON membership(user_id,status);
+CREATE TABLE invitation (id text PRIMARY KEY, organization_id text NOT NULL REFERENCES organization(id), email text NOT NULL, role text NOT NULL CHECK(role IN ('admin','supervisor','member')), token_hash text NOT NULL UNIQUE, status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','cancelled')), expires_at timestamptz NOT NULL, created_by text NOT NULL REFERENCES auth_user(id), created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX invitation_org_idx ON invitation(organization_id,status,created_at);
+CREATE TABLE audit_event (id text PRIMARY KEY, organization_id text NOT NULL REFERENCES organization(id), actor_id text NOT NULL REFERENCES auth_user(id), action text NOT NULL, target_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX audit_org_idx ON audit_event(organization_id,created_at);
+
+ALTER TABLE organization ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organization FORCE ROW LEVEL SECURITY;
+ALTER TABLE membership ENABLE ROW LEVEL SECURITY;
+ALTER TABLE membership FORCE ROW LEVEL SECURITY;
+ALTER TABLE invitation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invitation FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_event FORCE ROW LEVEL SECURITY;
+CREATE POLICY organization_read ON organization FOR SELECT USING (id = current_setting('app.tenant_id',true) OR EXISTS(SELECT 1 FROM membership m WHERE m.organization_id=organization.id AND m.user_id=current_setting('app.user_id',true) AND m.status='active'));
+CREATE POLICY organization_write ON organization FOR ALL USING (id=current_setting('app.tenant_id',true)) WITH CHECK(id=current_setting('app.tenant_id',true));
+CREATE POLICY membership_read ON membership FOR SELECT USING (user_id=current_setting('app.user_id',true) OR organization_id=current_setting('app.tenant_id',true));
+CREATE POLICY membership_write ON membership FOR ALL USING (organization_id=current_setting('app.tenant_id',true)) WITH CHECK(organization_id=current_setting('app.tenant_id',true));
+CREATE POLICY invitation_read ON invitation FOR SELECT USING (organization_id=current_setting('app.tenant_id',true) OR email=current_setting('app.verified_email',true));
+CREATE POLICY invitation_write ON invitation FOR ALL USING (organization_id=current_setting('app.tenant_id',true)) WITH CHECK(organization_id=current_setting('app.tenant_id',true));
+CREATE POLICY audit_read ON audit_event FOR SELECT USING(organization_id=current_setting('app.tenant_id',true));
+CREATE POLICY audit_write ON audit_event FOR INSERT WITH CHECK(organization_id=current_setting('app.tenant_id',true) AND actor_id=current_setting('app.user_id',true));

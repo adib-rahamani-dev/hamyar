@@ -1,0 +1,289 @@
+.account-shell {
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.account-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 42px;
+  border-bottom: 1px solid var(--border);
+}
+.account-topbar .brand {
+  padding: 0;
+}
+.account-content {
+  width: 100%;
+  max-width: 1200px;
+  padding: 42px;
+  margin-inline: auto;
+  flex: 1;
+}
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 15px auto;
+  padding: 32px;
+}
+.auth-card h1 {
+  margin-bottom: 12px;
+  font-size: 30px;
+}
+.auth-card > .muted {
+  font-size: 14px;
+}
+.auth-symbol {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  margin-bottom: 23px;
+}
+.auth-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--accent);
+  font-size: 13px;
+}
+.auth-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.auth-fields {
+  display: contents;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.auth-fields :disabled {
+  opacity: 0.65;
+}
+.setup-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 17px;
+  margin-block: 18px;
+  font-size: 13px;
+}
+.setup-note > svg {
+  color: var(--accent);
+  margin-top: 4px;
+}
+.setup-note p {
+  line-height: 1.9;
+}
+.setup-note strong {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 500;
+}
+.account-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding: 20px 42px;
+  font-size: 12px;
+}
+.account-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.real-workspace {
+  display: grid;
+  gap: 24px;
+}
+.real-workspace .page-heading {
+  margin: 0;
+}
+.real-workspace .draft-notice {
+  margin-block: 0;
+}
+.workspace-select {
+  margin-top: 13px;
+  width: 100%;
+  min-height: 50px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.invitation-form {
+  grid-template-columns: minmax(150px, 1fr) 180px auto;
+  align-items: end;
+}
+.invitation-form label {
+  margin-bottom: 9px;
+}
+.invite-link {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  gap: 10px;
+}
+.invite-link label {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+.invite-link input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+}
+.invitation-list {
+  margin-top: 20px;
+}
+.invitation-list strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.real-person > div {
+  min-width: 0;
+}
+.real-person bdi {
+  overflow-wrap: anywhere;
+}
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  padding-block: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.session-row > div {
+  min-width: 0;
+}
+.session-row strong {
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.session-row p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.recovery-codes {
+  margin-top: 25px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.recovery-codes > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-block: 15px;
+}
+.recovery-codes code {
+  text-align: center;
+  background: var(--accent-soft);
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.recovery-codes h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.recovery-codes p {
+  font-size: 12px;
+}
+.recovery-codes .text-action {
+  margin-top: 12px;
+  display: flex;
+}
+@media (max-width: 800px) {
+  .account-topbar {
+    padding: 18px 22px;
+  }
+  .account-content {
+    padding: 26px 20px;
+  }
+  .account-footer {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .account-content .page-heading {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .auth-card {
+    padding: 24px;
+    margin-block: 0;
+  }
+  .auth-card h1 {
+    font-size: 27px;
+  }
+  .invitation-form {
+    grid-template-columns: 1fr;
+  }
+  .real-person {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .real-person > div {
+    min-width: 130px;
+  }
+  .real-person .button {
+    margin-inline-start: auto;
+  }
+  .real-workspace .ops-panel {
+    padding: 21px;
+  }
+}
+@media (max-width: 380px) {
+  .account-content {
+    padding-inline: 15px;
+  }
+  .auth-card {
+    padding: 21px;
+  }
+  .recovery-codes > div {
+    grid-template-columns: 1fr;
+  }
+}
+.role-select {
+  max-width: 125px;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 7px;
+  font: inherit;
+  font-size: 13px;
+}

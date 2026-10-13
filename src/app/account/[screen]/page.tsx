@@ -11,7 +11,6 @@ const screens = [
   "sign-up",
   "reset",
   "new-password",
-  "two-factor",
 ] as const;
 export const dynamic = "force-dynamic";
 export default async function AccountPage({

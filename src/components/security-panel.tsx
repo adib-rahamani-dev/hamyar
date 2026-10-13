@@ -1,10 +1,8 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, KeyRound, Monitor, Download } from "lucide-react";
+import { Monitor } from "lucide-react";
 import { authClient } from "@/modules/identity/client";
-import { normalizeDigits } from "@/modules/identity/input";
-import { useHydrated } from "./use-hydrated";
 type Session = {
   id: string;
   token: string;
@@ -12,17 +10,7 @@ type Session = {
   createdAt: Date;
   expiresAt: Date;
 };
-export function SecurityPanel({
-  enabled,
-  sessionId,
-}: {
-  enabled: boolean;
-  sessionId: string;
-}) {
-  const [verified, setVerified] = useState(enabled);
-  const hydrated = useHydrated();
-  const [uri, setUri] = useState("");
-  const [codes, setCodes] = useState<string[]>([]);
+export function SecurityPanel({ sessionId }: { sessionId: string }) {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -35,70 +23,13 @@ export function SecurityPanel({
       })
       .catch(() => setNotice("ارتباط برای دریافت نشست‌ها برقرار نشد."));
   }, []);
-  async function enable(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setNotice("");
-    try {
-      const result = await authClient.twoFactor.enable({
-        password: String(new FormData(event.currentTarget).get("password")),
-      });
-      if (result.error || !result.data || !("totpURI" in result.data)) {
-        setNotice("راه‌اندازی انجام نشد. رمز را بررسی کنید.");
-        return;
-      }
-      setUri(result.data.totpURI);
-      setCodes(result.data.backupCodes);
-    } catch {
-      setNotice("ارتباط برقرار نشد.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function verify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      const result = await authClient.twoFactor.verifyTotp({
-        code: normalizeDigits(
-          String(new FormData(event.currentTarget).get("code")),
-        ),
-        trustDevice: false,
-      });
-      if (result.error) {
-        setNotice("کد معتبر نیست. دوباره تلاش کنید.");
-        return;
-      }
-      setUri("");
-      setVerified(true);
-      setNotice(
-        "تأیید دومرحله‌ای فعال شد. کدهای بازیابی را پیش از خروج نگه دارید.",
-      );
-    } catch {
-      setNotice("ارتباط برقرار نشد.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  function downloadCodes() {
-    const url = URL.createObjectURL(
-      new Blob([`کدهای بازیابی همیار؛ محرمانه\n\n${codes.join("\n")}`], {
-        type: "text/plain;charset=utf-8",
-      }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "hamyar-recovery-codes.txt";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
   return (
     <div className="real-workspace">
       <div className="page-heading">
         <div>
           <span className="eyebrow">امنیت حساب</span>
           <h1>کنترل دسترسی، دست شماست</h1>
-          <p className="muted">تأیید دومرحله‌ای و نشست‌های فعال حساب.</p>
+          <p className="muted">نشست‌های فعال حساب و مدیریت دستگاه‌های متصل.</p>
         </div>
         <Link className="text-action" href="/workspace">
           مجموعه‌های شما
@@ -108,84 +39,6 @@ export function SecurityPanel({
         {notice}
       </p>
       <div className="operations-grid">
-        <section className="ops-panel">
-          <div className="section-heading">
-            <h2>تأیید دومرحله‌ای</h2>
-            <ShieldCheck size={25} className="accent-text" />
-          </div>
-          {verified ? (
-            <p>
-              فعال است. ورود بعدی به کد برنامهٔ تأییدکننده یا کد بازیابی نیاز
-              دارد.
-            </p>
-          ) : !uri ? (
-            <form className="ticket-form" onSubmit={enable}>
-              <p className="muted">
-                برنامهٔ تأییدکننده مثل Google Authenticator یا برنامهٔ سازگار با
-                TOTP را آماده کنید.
-              </p>
-              <label htmlFor="mfa-password">رمز عبور حساب</label>
-              <input
-                id="mfa-password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                disabled={!hydrated}
-              />
-              <button className="button primary" disabled={busy || !hydrated}>
-                <KeyRound size={18} /> راه‌اندازی MFA
-              </button>
-            </form>
-          ) : (
-            <form className="ticket-form" onSubmit={verify}>
-              <p>
-                یک حساب با ورود دستی کلید در برنامهٔ تأییدکننده بسازید. کلید فقط
-                در همین صفحه نمایش داده می‌شود.
-              </p>
-              <label htmlFor="totp-secret">کلید محرمانهٔ برنامه</label>
-              <input
-                id="totp-secret"
-                readOnly
-                dir="ltr"
-                value={new URL(uri).searchParams.get("secret") ?? ""}
-              />
-              <label htmlFor="mfa-code">کد شش‌رقمی برنامه</label>
-              <input
-                id="mfa-code"
-                name="code"
-                dir="ltr"
-                required
-                pattern="[0-9۰-۹٠-٩]{6}"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-              />
-              <button className="button primary" disabled={busy}>
-                تأیید و فعال‌کردن
-              </button>
-            </form>
-          )}
-          {codes.length > 0 && (
-            <div className="recovery-codes">
-              <h3>کدهای بازیابی</h3>
-              <p className="muted">
-                در جای امن نگه دارید؛ هر کد یک بار مصرف می‌شود. این صفحه آنها را
-                در مرورگر ذخیره نمی‌کند.
-              </p>
-              <div dir="ltr">
-                {codes.map((code) => (
-                  <code key={code}>{code}</code>
-                ))}
-              </div>
-              <button className="button secondary" onClick={downloadCodes}>
-                <Download size={18} /> دانلود کدهای بازیابی
-              </button>
-              <Link className="text-action" href="/workspace">
-                ادامه به مجموعه‌ها
-              </Link>
-            </div>
-          )}
-        </section>
         <section className="ops-panel">
           <div className="section-heading">
             <h2>نشست‌های فعال</h2>

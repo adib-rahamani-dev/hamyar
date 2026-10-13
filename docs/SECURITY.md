@@ -64,3 +64,7 @@ API workspace Origin معتبر، JSON strict، payload حداکثر 8KB و 60 �
 صندوق توسعه فقط با flag صریح، NODE_ENV=development، loopback و DB آزمون فعال است؛ روی Vercel و production غیرفعال است. signup محلی فقط ایمیل `.test` می‌پذیرد؛ tokenها در حافظهٔ محلی با TTL محدود هستند. این محیط باید فقط روی دستگاه توسعه و با دادهٔ مصنوعی استفاده شود. keys fixture برای HTTPS عمومی رد می‌شوند؛ request logging توسعه خاموش است تا URLهای verification/recovery چاپ نشوند.
 
 احراز هویت واقعی و MFA، negative tests بین دو tenant، access revocation، origin/rate limits، TLS و TURN، CSP، اسکن فایل، backup و restore عملی، load test رسانه و ضبط، سیاست حریم خصوصی و بررسی نفوذ مستقل لازم‌اند.
+
+## خودمیزبانی و انتقال محیط
+
+credential نقش migration، bootstrap و runtime مستقل‌اند؛ web image فقط runtime را دریافت می‌کند. private استقرار از Git، Docker context و upload ورسل کنار گذاشته می‌شود. PostgreSQL در Compose مستقل port عمومی ندارد؛ وب فقط loopback برای HTTPS proxy منتشر می‌شود. bootstrap فقط volume تازهٔ اختصاصی را آماده می‌کند؛ volume موجود بدون بررسی اپراتور حذف یا بازنویسی نمی‌شود. یک سایت مرجع نوشتن مانع split-brain است؛ backup/restore و تغییر origin/کلید نشست باید آزموده شوند. مستقل‌شدن سرویس‌ها کنترل ban/reconnect رسانه را خودکار حل نمی‌کند. [ADR 0006](adr/0006-portable-self-hosting.md).

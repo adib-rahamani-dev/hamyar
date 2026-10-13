@@ -1,0 +1,14 @@
+.git
+.github
+.next
+.vercel
+.artifacts
+node_modules
+.env*
+**/.env*
+infra/self-host/private
+test-results
+playwright-report
+coverage
+*.log
+*.tsbuildinfo

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:self-host": "node scripts/build-self-host.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
@@ -22,6 +23,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:identity:e2e": "playwright test --config playwright.identity.config.ts",
     "test:signup:e2e": "playwright test --config playwright.signup.config.ts",
+    "test:standalone:e2e": "node scripts/prepare-standalone.mjs && playwright test --config playwright.standalone.config.ts",
     "test:public:e2e": "playwright test --config playwright.public.config.ts",
     "local:identity": "node --env-file-if-exists=.env.identity.local scripts/local-identity.mjs"
   },

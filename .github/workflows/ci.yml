@@ -44,3 +44,5 @@ jobs:
       - run: npm run test:identity:e2e
       - run: npm run test:signup:e2e
       - run: npm run test:public:e2e
+      - run: npm run build:self-host
+      - run: npm run test:standalone:e2e

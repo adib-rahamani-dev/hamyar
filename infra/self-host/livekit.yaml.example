@@ -1,0 +1,25 @@
+# Configuration starting point, not a ready public deployment.
+# TLS/L4 proxy, firewall, secrets, admission/reconnect gate and tests are mandatory.
+# Review against the pinned LiveKit server release before running.
+port: 7880
+log_level: warn
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: false
+  node_ip: REPLACE_WITH_REACHABLE_SERVER_IP
+  # Explicit domestic STUN avoids the default external STUN dependency.
+  stun_servers: ["turn.hamyar.example:3478"]
+redis:
+  address: 127.0.0.1:6379
+  password: REPLACE_WITH_PRIVATE_REDIS_PASSWORD
+keys:
+  REPLACE_WITH_PRIVATE_API_KEY: REPLACE_WITH_PRIVATE_API_SECRET
+turn:
+  enabled: true
+  domain: turn.hamyar.example
+  udp_port: 3478
+  tls_port: 443
+  # For a properly configured L4 TLS terminator only, not an HTTP reverse proxy.
+  external_tls: true

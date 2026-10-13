@@ -60,7 +60,7 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 
 ## میزبانی نسخهٔ نمایشی
 
-به‌روزرسانی ADR 0004: نسخهٔ عمومی دیگر Dashboard یا اتاق نمونه را جای دادهٔ واقعی نمایش نمی‌دهد. هویت به Neon اختصاصی با نقش runtime غیرمالک و اتصال pooled متصل می‌شود. پنل و اتاق‌های نمونه فقط regression محلی با flag توسعه هستند. مدل پایدار meeting_room و room_assignment با composite FK/RLS اضافه شد؛ رسانه هنوز نیازمند LiveKit Cloud و join معتبر است. شرح اولیهٔ زیر تاریخچهٔ نخستین انتشار است.
+به‌روزرسانی ADR 0004: نسخهٔ عمومی دیگر Dashboard یا اتاق نمونه را جای دادهٔ واقعی نمایش نمی‌دهد. هویت به Neon اختصاصی با نقش runtime غیرمالک و اتصال pooled متصل می‌شود. پنل و اتاق‌های نمونه فقط regression محلی با flag توسعه هستند. مدل پایدار meeting_room و room_assignment با composite FK/RLS اضافه شد؛ رسانه هنوز نیازمند سرور LiveKit خودمیزبان و join معتبر است؛ Cloud اختیاری است. شرح اولیهٔ زیر تاریخچهٔ نخستین انتشار است.
 
 برنامهٔ Next.js روی پروژهٔ `hamyar` در Vercel منتشر می‌شود. در حال حاضر دادهٔ نمونه و رابط محلی است و هیچ credential رسانه یا storage لازم ندارد. فایل‌های `.env*`، `.vercel`، artifact و تست از سورس انتشار کنار گذاشته می‌شوند؛ token، secret و تنظیم محلی در Git نگهداری نمی‌شوند. LiveKit SFU، TURN، Egress و فرایند WebSocket تخته باید بعداً روی زیرساخت مناسب و مستقل اجرا شوند؛ Vercel میزبان رابط و API کنترل است، نه media server. پروژه به دلیل خطای دسترسی اتصال GitHub در نخستین link، از CLI منتشر می‌شود؛ اتصال خودکار Git تا تأیید مجوز GitHub ادعا نمی‌شود.
 
@@ -89,3 +89,7 @@ SDK اتصال مجدد رسانه را مدیریت می‌کند؛ وضعیت 
 - [Web Audio visualization](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Visualizations_with_Web_Audio_API)
 
 نسخهٔ نصب‌شده و lockfile مرجع API اجرایی‌اند؛ مستندات آنلاین می‌توانند از نسخهٔ SDK جلوتر باشند.
+
+## قابلیت انتقال و شبکهٔ داخلی
+
+[ADR 0006](adr/0006-portable-self-hosting.md) و [SELF_HOSTING.md](SELF_HOSTING.md) تصمیم جاری‌اند: Vercel/Neon محیط آزمایش فعلی‌اند، نه الزام اجرای محصول. وب خروجی standalone لینوکس دارد؛ Compose مستقل، PostgreSQL و credentialهای migration/runtime جدا را تعریف می‌کند. SFU/TURN و بعدها ضبط، فایل و همگام‌سازی همگی باید روی زیرساخت مستقل و قابل دسترس از داخل ایران اجرا شوند. یک سایت مرجع برای نوشتن داده، آماده‌سازی قبل از قطعی و آزمون restore/قطع egress لازم است؛ failover خودکار و replication هنوز پیاده نشده‌اند.

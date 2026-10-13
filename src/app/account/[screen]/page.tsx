@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { AccountFrame } from "@/components/account-frame";
 import { AuthPanel } from "@/components/auth-panel";
-import { identityConfigured } from "@/modules/identity/config";
+import {
+  identityConfigured,
+  emailVerificationRequired,
+} from "@/modules/identity/config";
 import { developmentMailboxEnabled } from "@/modules/identity/dev-mail-config";
 const screens = [
   "sign-in",
@@ -27,6 +30,7 @@ export default async function AccountPage({
         mode={screen as (typeof screens)[number]}
         token={query.token ?? ""}
         configured={identityConfigured(process.env)}
+        emailVerificationRequired={emailVerificationRequired(process.env)}
         localMailbox={developmentMailboxEnabled(process.env)}
         emailConfigured={
           developmentMailboxEnabled(process.env) ||

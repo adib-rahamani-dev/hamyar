@@ -26,6 +26,8 @@ export function getIdentity() {
   const auth = createIdentity(pool, {
     url: config.data.BETTER_AUTH_URL,
     secret: config.data.BETTER_AUTH_SECRET,
+    requireEmailVerification:
+      config.data.AUTH_EMAIL_VERIFICATION_REQUIRED !== "false",
     localMailbox: developmentMailboxEnabled(process.env),
     emailConfigured:
       developmentMailboxEnabled(process.env) ||

@@ -1,11 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { identityConfigured } from "./config";
+import { identityConfigured, emailVerificationRequired } from "./config";
 const fixture = {
   DATABASE_URL: "postgresql://localhost/identity_test",
   BETTER_AUTH_URL: "https://app.example.test",
   BETTER_AUTH_SECRET: "94ace7136d6bc9c9a6eea643fb95325c",
 };
 describe("identity configuration fails closed", () => {
+  it("only disables verification with the explicit server value false", () => {
+    expect(emailVerificationRequired({})).toBe(true);
+    expect(
+      emailVerificationRequired({ AUTH_EMAIL_VERIFICATION_REQUIRED: "0" }),
+    ).toBe(true);
+    expect(
+      identityConfigured({ ...fixture, AUTH_EMAIL_VERIFICATION_REQUIRED: "0" }),
+    ).toBe(false);
+    expect(
+      identityConfigured({
+        ...fixture,
+        AUTH_EMAIL_VERIFICATION_REQUIRED: "false",
+      }),
+    ).toBe(true);
+    expect(
+      emailVerificationRequired({ AUTH_EMAIL_VERIFICATION_REQUIRED: "false" }),
+    ).toBe(false);
+  });
   it("rejects known development keys on public HTTPS deployments", () => {
     expect(
       identityConfigured({

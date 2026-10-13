@@ -17,10 +17,12 @@ export function createIdentity(
     secure: boolean;
     localMailbox?: boolean;
     emailConfigured?: boolean;
+    requireEmailVerification?: boolean;
     sendMail: (mail: AuthMail) => Promise<void>;
   },
 ) {
   const db = drizzle(pool, { schema: authSchema });
+  const requireEmailVerification = config.requireEmailVerification !== false;
   return betterAuth({
     logger: { disabled: true },
     appName: "Hamyar",
@@ -32,13 +34,13 @@ export function createIdentity(
       enabled: true,
       minPasswordLength: 12,
       maxPasswordLength: 128,
-      requireEmailVerification: true,
+      requireEmailVerification,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) =>
         config.sendMail({ to: user.email, url, subject: "بازیابی حساب همیار" }),
     },
     emailVerification: {
-      sendOnSignUp: true,
+      sendOnSignUp: requireEmailVerification,
       autoSignInAfterVerification: false,
       sendVerificationEmail: async ({ user, url }) =>
         config.sendMail({ to: user.email, url, subject: "تأیید ایمیل همیار" }),
@@ -73,11 +75,10 @@ export function createIdentity(
       before: createAuthMiddleware(async (ctx) => {
         if (
           config.emailConfigured === false &&
-          [
-            "/sign-up/email",
-            "/request-password-reset",
-            "/send-verification-email",
-          ].includes(ctx.path)
+          ((ctx.path === "/sign-up/email" && requireEmailVerification) ||
+            ["/request-password-reset", "/send-verification-email"].includes(
+              ctx.path,
+            ))
         )
           throw new APIError("SERVICE_UNAVAILABLE", {
             message: "AUTH_EMAIL_NOT_CONFIGURED",

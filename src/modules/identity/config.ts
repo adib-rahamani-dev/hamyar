@@ -25,6 +25,7 @@ export const identityConfigSchema = z
         }
       }),
     BETTER_AUTH_SECRET: z.string().min(32),
+    AUTH_EMAIL_VERIFICATION_REQUIRED: z.enum(["true", "false"]).default("true"),
   })
   .superRefine((config, ctx) => {
     if (
@@ -40,4 +41,9 @@ export const identityConfigSchema = z
   });
 export function identityConfigured(env: Record<string, string | undefined>) {
   return identityConfigSchema.safeParse(env).success;
+}
+export function emailVerificationRequired(
+  env: Record<string, string | undefined>,
+) {
+  return env.AUTH_EMAIL_VERIFICATION_REQUIRED !== "false";
 }

@@ -14,6 +14,7 @@ export class DomainError extends Error {
 type Actor = {
   userId: string;
   email: string;
+  emailVerified: boolean;
   sessionId: string;
   organizationId: string | null;
   mfa: boolean;
@@ -46,11 +47,15 @@ export function createTenancy(pool: Pool, auth: Identity) {
   async function actor(headers: Headers): Promise<Actor> {
     const current = await auth.api.getSession({ headers });
     if (!current) throw new DomainError("SIGN_IN_REQUIRED", 401);
-    if (!current.user.emailVerified)
+    if (
+      !current.user.emailVerified &&
+      auth.options.emailAndPassword?.requireEmailVerification !== false
+    )
       throw new DomainError("EMAIL_VERIFICATION_REQUIRED");
     return {
       userId: current.user.id,
       email: current.user.email.toLowerCase(),
+      emailVerified: current.user.emailVerified,
       sessionId: current.session.id,
       organizationId: current.session.activeOrganizationId ?? null,
       mfa: !!current.user.twoFactorEnabled && !!current.session.mfaVerifiedAt,
@@ -65,7 +70,7 @@ export function createTenancy(pool: Pool, auth: Identity) {
       await client.query("BEGIN");
       await client.query(
         "SELECT set_config('app.user_id',$1,true),set_config('app.verified_email',$2,true),set_config('app.tenant_id',$3,true)",
-        [who.userId, who.email, ""],
+        [who.userId, who.emailVerified ? who.email : "", ""],
       );
       const result = await run(client);
       await client.query("COMMIT");
@@ -270,6 +275,9 @@ export function createTenancy(pool: Pool, auth: Identity) {
         .regex(/^[\w-]{43}$/)
         .parse(token);
       const who = await actor(headers);
+      // Email ownership is mandatory even while password signup is temporary.
+      if (!who.emailVerified)
+        throw new DomainError("EMAIL_VERIFICATION_REQUIRED");
       return transaction(who, async (c) => {
         const candidate = (
           await c.query(

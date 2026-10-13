@@ -26,6 +26,7 @@ const auth = createIdentity(pool, {
 const tenancy = createTenancy(pool, auth);
 
 class Client {
+  constructor(private identity = auth) {}
   cookies = new Map<string, string>();
   ip = `192.0.2.${Math.floor(Math.random() * 200) + 1}`;
   get headers() {
@@ -36,7 +37,7 @@ class Client {
     });
   }
   async request(path: string, body?: unknown, origin = base) {
-    const response = await auth.handler(
+    const response = await this.identity.handler(
       new Request(`${base}/api/auth${path}`, {
         method: body === undefined ? "GET" : "POST",
         headers: {
@@ -127,6 +128,120 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL identity and tenant boundary", () => {
+  it("temporary password signup preserves unverified email, MFA, invitation isolation and strict rollback", async () => {
+    let deliveries = 0;
+    const temporary = createIdentity(pool, {
+      url: base,
+      secret: "integration-fixture-only-never-use-in-production",
+      secure: false,
+      emailConfigured: false,
+      requireEmailVerification: false,
+      sendMail: async () => {
+        deliveries++;
+      },
+    });
+    const local = createTenancy(pool, temporary);
+    const c = new Client(temporary);
+    const email = `temporary-${randomUUID()}@example.test`;
+    expect(
+      (
+        await c.request("/sign-up/email", {
+          name: "Temporary owner",
+          email,
+          password,
+          emailVerified: true,
+          activeOrganizationId: randomUUID(),
+          mfaVerifiedAt: new Date(),
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await temporary.api.getSession({ headers: c.headers }))?.user
+        .emailVerified,
+    ).toBe(false);
+    expect(
+      (
+        await pool.query(
+          "SELECT email_verified FROM auth_user WHERE email=$1",
+          [email],
+        )
+      ).rows[0].email_verified,
+    ).toBe(false);
+    expect(await local.list(c.headers)).toEqual({
+      activeOrganizationId: null,
+      organizations: [],
+    });
+    await expect(
+      local.create(c.headers, {
+        name: "Private temporary school",
+        kind: "school",
+      }),
+    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+    const enabled = await c.request("/two-factor/enable", { password });
+    expect(enabled.status).toBe(200);
+    const key = new URL(enabled.data.totpURI).searchParams.get("secret")!;
+    expect(
+      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
+    ).toBe(200);
+    const owned = await local.create(c.headers, {
+      name: "Private temporary school",
+      kind: "school",
+    });
+    expect((await local.list(c.headers)).organizations).toHaveLength(1);
+    const other = await account("VerifiedInviter");
+    await tenancy.create(other.client.headers, {
+      name: "Other school",
+      kind: "school",
+    });
+    const invite = await tenancy.invite(other.client.headers, {
+      email,
+      role: "member",
+    });
+    const context = await local.inOrganization(
+      c.headers,
+      false,
+      async (db) => ({
+        email: (
+          await db.query(
+            "SELECT current_setting('app.verified_email') AS email",
+          )
+        ).rows[0].email,
+        invites: (
+          await db.query("SELECT id FROM invitation WHERE email=$1", [email])
+        ).rows,
+      }),
+    );
+    expect(context).toEqual({ email: "", invites: [] });
+    await expect(
+      local.acceptInvite(c.headers, invite.token),
+    ).rejects.toMatchObject({ code: "EMAIL_VERIFICATION_REQUIRED" });
+    expect((await tenancy.invitations(other.client.headers))[0].status).toBe(
+      "pending",
+    );
+    for (const path of [
+      "/request-password-reset",
+      "/send-verification-email",
+    ]) {
+      expect((await c.request(path, { email })).status).toBe(503);
+    }
+    expect(deliveries).toBe(0);
+    await expect(tenancy.list(c.headers)).rejects.toMatchObject({
+      code: "EMAIL_VERIFICATION_REQUIRED",
+    });
+    await c.request("/sign-out", {});
+    expect(
+      (await new Client().request("/sign-in/email", { email, password }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await c.request("/sign-in/email", { email, password })).status,
+    ).toBe(200);
+    expect(
+      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
+    ).toBe(200);
+    expect((await local.list(c.headers)).organizations[0].id).toBe(owned.id);
+    expect(deliveries).toBe(0);
+  });
   it("runtime cannot own tables, adopt the migration role or disable RLS", async () => {
     const ownerName = decodeURIComponent(
       new URL(process.env.TEST_MIGRATION_DATABASE_URL!).username,

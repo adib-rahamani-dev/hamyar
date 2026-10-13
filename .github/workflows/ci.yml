@@ -42,4 +42,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run test:identity:e2e
+      - run: npm run test:signup:e2e
       - run: npm run test:public:e2e

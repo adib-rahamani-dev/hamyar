@@ -42,6 +42,7 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "isolated-browser-fixture-only-not-production",
       RESEND_API_KEY: "",
       AUTH_EMAIL_FROM: "",
+      AUTH_EMAIL_VERIFICATION_REQUIRED: "true",
     },
   },
 });

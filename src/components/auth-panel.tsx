@@ -18,12 +18,14 @@ export function AuthPanel({
   mode,
   configured,
   emailConfigured = false,
+  emailVerificationRequired = true,
   localMailbox = false,
   token = "",
 }: {
   mode: Mode;
   configured: boolean;
   emailConfigured?: boolean;
+  emailVerificationRequired?: boolean;
   localMailbox?: boolean;
   token?: string;
 }) {
@@ -33,7 +35,8 @@ export function AuthPanel({
   const hydrated = useHydrated();
   const blocked =
     !configured ||
-    ((mode === "sign-up" || mode === "reset") && !emailConfigured);
+    ((mode === "reset" || (mode === "sign-up" && emailVerificationRequired)) &&
+      !emailConfigured);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (blocked || busy || !hydrated) return;
@@ -88,9 +91,11 @@ export function AuthPanel({
           return;
         window.location.assign("/workspace");
       } else if (mode === "two-factor") window.location.assign("/workspace");
-      else if (mode === "sign-up")
-        setNotice("حساب ساخته شد. برای ورود، لینک تأیید ایمیل را باز کنید.");
-      else if (mode === "reset")
+      else if (mode === "sign-up") {
+        if (!emailVerificationRequired) window.location.assign("/workspace");
+        else
+          setNotice("حساب ساخته شد. برای ورود، لینک تأیید ایمیل را باز کنید.");
+      } else if (mode === "reset")
         setNotice(
           "اگر حساب واجد شرایطی وجود داشته باشد، پیام بازیابی برای آن ارسال می‌شود.",
         );
@@ -131,9 +136,17 @@ export function AuthPanel({
           <p>
             {!configured
               ? "حساب واقعی هنوز روی این میزبان تنظیم نشده است. اتصال پایگاه داده و کلید احراز هویت باید در محیط سرور اضافه شوند."
-              : "ارسال ایمیل هنوز تنظیم نشده است؛ ثبت‌نام و بازیابی تا اتصال سرویس فرستنده فعال نمی‌شوند."}
+              : mode === "reset"
+                ? "بازیابی رمز فعلاً در دسترس نیست؛ سرویس ارسال ایمیل هنوز متصل نشده است."
+                : "ارسال ایمیل هنوز تنظیم نشده است؛ ثبت‌نام تا اتصال سرویس فرستنده فعال نمی‌شود."}
           </p>
         </div>
+      )}
+      {configured && mode === "sign-up" && !emailVerificationRequired && (
+        <p className="section-note">
+          فعلاً بدون تأیید ایمیل حساب بسازید. بازیابی رمز ایمیلی و پذیرش دعوت با
+          ایمیل تأییدنشده در دسترس نیستند؛ رمزتان را نگه دارید.
+        </p>
       )}
       <form className="ticket-form" onSubmit={submit}>
         <fieldset

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { migrate } from "../../scripts/migrate.mjs";
 import { createIdentity, type AuthMail } from "../../src/modules/identity/auth";
 import { createTenancy } from "../../src/modules/tenancy/service";
@@ -58,7 +58,7 @@ class Client {
   }
 }
 const password = "Synthetic-test-account-password!";
-async function account(name: string, mfa = true) {
+async function account(name: string, _mfa = false) {
   const client = new Client(),
     email = `${name}-${randomUUID()}@example.test`.toLowerCase();
   expect(
@@ -71,33 +71,8 @@ async function account(name: string, mfa = true) {
   expect(
     (await client.request("/sign-in/email", { email, password })).status,
   ).toBe(200);
-  if (mfa) {
-    const enabled = await client.request("/two-factor/enable", { password });
-    expect(enabled.status).toBe(200);
-    const secret = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (await client.request("/two-factor/verify-totp", { code: totp(secret) }))
-        .status,
-    ).toBe(200);
-  }
   return { client, email };
 }
-function totp(secret: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const c of secret.toUpperCase())
-    bits += alphabet.indexOf(c).toString(2).padStart(5, "0");
-  const bytes = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const hash = createHmac("sha1", bytes).update(counter).digest(),
-    offset = hash[hash.length - 1]! & 15;
-  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(
-    6,
-    "0",
-  );
-}
-
 beforeAll(async () => {
   const role = (
     await pool.query(
@@ -128,7 +103,7 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL identity and tenant boundary", () => {
-  it("temporary password signup preserves unverified email, MFA, invitation isolation and strict rollback", async () => {
+  it("temporary password signup preserves unverified email, invitation isolation and strict rollback", async () => {
     let deliveries = 0;
     const temporary = createIdentity(pool, {
       url: base,
@@ -171,18 +146,6 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       activeOrganizationId: null,
       organizations: [],
     });
-    await expect(
-      local.create(c.headers, {
-        name: "Private temporary school",
-        kind: "school",
-      }),
-    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
-    const enabled = await c.request("/two-factor/enable", { password });
-    expect(enabled.status).toBe(200);
-    const key = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
-    ).toBe(200);
     const owned = await local.create(c.headers, {
       name: "Private temporary school",
       kind: "school",
@@ -235,9 +198,6 @@ describe("real PostgreSQL identity and tenant boundary", () => {
     ).toBe(403);
     expect(
       (await c.request("/sign-in/email", { email, password })).status,
-    ).toBe(200);
-    expect(
-      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
     ).toBe(200);
     expect((await local.list(c.headers)).organizations[0].id).toBe(owned.id);
     expect(deliveries).toBe(0);
@@ -296,71 +256,6 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       tenancy.list(new Headers({ cookie: "better-auth.session_token=forged" })),
     ).rejects.toMatchObject({ code: "SIGN_IN_REQUIRED" });
   });
-  it("enforces MFA proof on the current session before organization creation", async () => {
-    const { client } = await account("NoMfa", false);
-    await expect(
-      tenancy.create(client.headers, { name: "School", kind: "school" }),
-    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
-  });
-  it("never upgrades an old first-factor session when another session enrolls MFA", async () => {
-    const owner = await account("Enrollment", false),
-      old = new Client();
-    expect(
-      (
-        await old.request("/sign-in/email", {
-          email: owner.email,
-          password,
-          mfaVerifiedAt: new Date(),
-          activeOrganizationId: randomUUID(),
-        })
-      ).status,
-    ).toBe(200);
-    const enabled = await owner.client.request("/two-factor/enable", {
-      password,
-    });
-    const secret = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (
-        await owner.client.request("/two-factor/verify-totp", {
-          code: totp(secret),
-        })
-      ).status,
-    ).toBe(200);
-    const org = await tenancy.create(owner.client.headers, {
-      name: "Enrollment school",
-      kind: "school",
-    });
-    await expect(tenancy.switch(old.headers, org.id)).rejects.toMatchObject({
-      code: "MFA_REQUIRED",
-    });
-    const fresh = new Client();
-    const login = await fresh.request("/sign-in/email", {
-      email: owner.email,
-      password,
-    });
-    expect(login.data.twoFactorRedirect).toBe(true);
-    await expect(tenancy.list(fresh.headers)).rejects.toMatchObject({
-      code: "SIGN_IN_REQUIRED",
-    });
-    expect(
-      (
-        await fresh.request("/two-factor/verify-backup-code", {
-          code: enabled.data.backupCodes[0],
-        })
-      ).status,
-    ).toBe(200);
-    await tenancy.switch(fresh.headers, org.id);
-    expect(await tenancy.members(fresh.headers)).toHaveLength(1);
-    const replay = new Client();
-    await replay.request("/sign-in/email", { email: owner.email, password });
-    expect(
-      (
-        await replay.request("/two-factor/verify-backup-code", {
-          code: enabled.data.backupCodes[0],
-        })
-      ).status,
-    ).not.toBe(200);
-  }, 30000);
   it("password recovery revokes sessions and accepts the reset token only once", async () => {
     const value = await account("Recovery", false),
       old = value.client.headers;

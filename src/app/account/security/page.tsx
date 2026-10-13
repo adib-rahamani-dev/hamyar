@@ -15,7 +15,6 @@ export default async function SecurityPage() {
   return (
     <AccountFrame>
       <SecurityPanel
-        enabled={!!current.user.twoFactorEnabled}
         sessionId={current.session.id}
       />
     </AccountFrame>

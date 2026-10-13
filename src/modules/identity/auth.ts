@@ -1,12 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { twoFactor } from "better-auth/plugins/two-factor";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { and, eq } from "drizzle-orm";
 import type { Pool } from "pg";
 import { z } from "zod";
-import { authSchema, session } from "./schema";
+import { authSchema } from "./schema";
 
 export type AuthMail = { to: string; subject: string; url: string };
 export function createIdentity(
@@ -51,7 +49,6 @@ export function createIdentity(
       cookieCache: { enabled: false },
       additionalFields: {
         activeOrganizationId: { type: "string", required: false, input: false },
-        mfaVerifiedAt: { type: "date", required: false, input: false },
       },
     },
     advanced: {
@@ -64,13 +61,6 @@ export function createIdentity(
       },
     },
     rateLimit: { enabled: true, storage: "database", window: 60, max: 30 },
-    plugins: [
-      twoFactor({
-        issuer: "Hamyar",
-        skipVerificationOnEnable: false,
-        trustDeviceMaxAge: 0,
-      }),
-    ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         if (
@@ -99,27 +89,6 @@ export function createIdentity(
             message: "INVALID_ACCOUNT_INPUT",
           });
         ctx.body.name = value.data.name;
-      }),
-      after: createAuthMiddleware(async (ctx) => {
-        // Proof belongs to the newly issued session, never to old first-factor sessions.
-        if (
-          ![
-            "/two-factor/verify-totp",
-            "/two-factor/verify-backup-code",
-          ].includes(ctx.path)
-        )
-          return;
-        const fresh = ctx.context.newSession;
-        if (!fresh?.user.twoFactorEnabled) return;
-        await db
-          .update(session)
-          .set({ mfaVerifiedAt: new Date() })
-          .where(
-            and(
-              eq(session.id, fresh.session.id),
-              eq(session.userId, fresh.user.id),
-            ),
-          );
       }),
     },
   });

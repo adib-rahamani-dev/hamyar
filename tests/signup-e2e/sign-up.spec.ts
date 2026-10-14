@@ -1,25 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
-function totp(secret: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const bits = [...secret]
-    .map((c) => alphabet.indexOf(c).toString(2).padStart(5, "0"))
-    .join("");
-  const key = Buffer.from(
-    bits.match(/.{8}/g)!.map((part) => parseInt(part, 2)),
-  );
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const hash = createHmac("sha1", key).update(counter).digest();
-  const offset = hash[hash.length - 1]! & 15;
-  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(
-    6,
-    "0",
-  );
-}
-
-test("signup without sender → unverified session → MFA → persisted room → sign-out and real sign-in", async ({
+test("signup without sender → unverified session → password-only management → persisted room → sign-out and real sign-in", async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -42,17 +24,7 @@ test("signup without sender → unverified session → MFA → persisted room �
   expect(session.user.emailVerified).toBe(false);
   await expect(
     page.getByRole("button", { name: "ایجاد مجموعه" }),
-  ).toBeDisabled();
-  await page.getByRole("link", { name: "فعال‌کردن تأیید دومرحله‌ای" }).click();
-  await page.getByLabel("رمز عبور حساب").fill(password);
-  await page.getByRole("button", { name: "راه‌اندازی MFA" }).click();
-  const key = await page.getByLabel("کلید محرمانهٔ برنامه").inputValue();
-  await page.getByLabel("کد شش‌رقمی برنامه").fill(totp(key));
-  await page.getByRole("button", { name: "تأیید و فعال‌کردن" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "تأیید دومرحله‌ای فعال شد",
-  );
-  await page.getByRole("link", { name: "ادامه به مجموعه‌ها" }).click();
+  ).toBeEnabled();
   await page.getByLabel("نام مجموعه").fill("مدرسهٔ ثبت‌نام واقعی");
   await page.getByRole("button", { name: "ایجاد مجموعه" }).click();
   await expect(
@@ -66,9 +38,6 @@ test("signup without sender → unverified session → MFA → persisted room �
   await page.getByLabel("ایمیل", { exact: true }).fill(email);
   await page.getByLabel("رمز عبور", { exact: true }).fill(password);
   await page.getByRole("button", { name: "ورود به همیار" }).click();
-  await expect(page).toHaveURL(/\/account\/two-factor$/);
-  await page.getByLabel("کد شش‌رقمی", { exact: true }).fill(totp(key));
-  await page.getByRole("button", { name: "تأیید ورود" }).click();
   await expect(page).toHaveURL(/\/workspace$/);
   await page.getByLabel("انتخاب مجموعه").selectOption({
     label: "مدرسهٔ ثبت‌نام واقعی · مالک",

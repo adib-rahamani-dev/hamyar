@@ -18,6 +18,7 @@ type Actor = {
   sessionId: string;
   organizationId: string | null;
   mfa: boolean;
+  mfaRequired: boolean;
 };
 type Membership = {
   id: string;
@@ -59,6 +60,7 @@ export function createTenancy(pool: Pool, auth: Identity) {
       sessionId: current.session.id,
       organizationId: current.session.activeOrganizationId ?? null,
       mfa: !!current.user.twoFactorEnabled && !!current.session.mfaVerifiedAt,
+      mfaRequired: !!current.user.twoFactorEnabled,
     };
   }
   async function transaction<T>(
@@ -95,7 +97,7 @@ export function createTenancy(pool: Pool, auth: Identity) {
     const member = found.rows[0];
     if (!member || member.status !== "active")
       throw new DomainError("MEMBERSHIP_REVOKED");
-    if (member.role !== "member" && !who.mfa)
+    if (member.role !== "member" && who.mfaRequired && !who.mfa)
       throw new DomainError("MFA_REQUIRED", 428);
     if (manage && member.role === "member")
       throw new DomainError("MANAGER_REQUIRED");
@@ -147,7 +149,8 @@ export function createTenancy(pool: Pool, auth: Identity) {
     async create(headers: Headers, input: unknown) {
       const value = orgInput.parse(input);
       const who = await actor(headers);
-      if (!who.mfa) throw new DomainError("MFA_REQUIRED", 428);
+      if (who.mfaRequired && !who.mfa)
+        throw new DomainError("MFA_REQUIRED", 428);
       return transaction(who, async (c) => {
         const id = randomUUID();
         who.organizationId = id;
@@ -297,7 +300,7 @@ export function createTenancy(pool: Pool, auth: Identity) {
           )
         ).rows[0];
         if (!invite) throw new DomainError("INVITATION_INVALID", 404);
-        if (invite.role !== "member" && !who.mfa)
+        if (invite.role !== "member" && who.mfaRequired && !who.mfa)
           throw new DomainError("MFA_REQUIRED", 428);
         who.organizationId = invite.organization_id;
         await c.query("SELECT set_config('app.tenant_id',$1,true)", [

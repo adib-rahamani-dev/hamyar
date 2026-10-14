@@ -80,6 +80,27 @@ export function SecurityPanel({
       setBusy(false);
     }
   }
+  async function disable(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await authClient.twoFactor.disable({
+        password: String(new FormData(event.currentTarget).get("password")),
+      });
+      if (result.error) {
+        setNotice("غیرفعال‌کردن انجام نشد؛ رمز عبور حساب را بررسی کنید.");
+        return;
+      }
+      setCodes([]);
+      setUri("");
+      window.location.assign("/workspace");
+    } catch {
+      setNotice("ارتباط برقرار نشد؛ دوباره تلاش کنید.");
+    } finally {
+      setBusy(false);
+    }
+  }
   function downloadCodes() {
     const url = URL.createObjectURL(
       new Blob([`کدهای بازیابی همیار؛ محرمانه\n\n${codes.join("\n")}`], {
@@ -98,7 +119,7 @@ export function SecurityPanel({
         <div>
           <span className="eyebrow">امنیت حساب</span>
           <h1>کنترل دسترسی، دست شماست</h1>
-          <p className="muted">تأیید دومرحله‌ای و نشست‌های فعال حساب.</p>
+          <p className="muted">امنیت اختیاری و نشست‌های فعال حساب.</p>
         </div>
         <Link className="text-action" href="/workspace">
           مجموعه‌های شما
@@ -110,17 +131,29 @@ export function SecurityPanel({
       <div className="operations-grid">
         <section className="ops-panel">
           <div className="section-heading">
-            <h2>تأیید دومرحله‌ای</h2>
+            <h2>تأیید دومرحله‌ای · اختیاری</h2>
             <ShieldCheck size={25} className="accent-text" />
           </div>
           {verified ? (
-            <p>
-              فعال است. ورود بعدی به کد برنامهٔ تأییدکننده یا کد بازیابی نیاز
-              دارد.
-            </p>
+            <form className="ticket-form" onSubmit={disable}>
+              <p>فعال است؛ برای ورود فقط با رمز، می‌توانید آن را خاموش کنید.</p>
+              <label htmlFor="disable-mfa-password">رمز عبور حساب</label>
+              <input
+                id="disable-mfa-password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                disabled={busy || !hydrated}
+              />
+              <button className="button secondary" disabled={busy || !hydrated}>
+                غیرفعال‌کردن تأیید دومرحله‌ای
+              </button>
+            </form>
           ) : !uri ? (
             <form className="ticket-form" onSubmit={enable}>
               <p className="muted">
+                این قابلیت اختیاری است؛ مدیریت با رمز عبور هم انجام می‌شود.
                 برنامهٔ تأییدکننده مثل Google Authenticator یا برنامهٔ سازگار با
                 TOTP را آماده کنید.
               </p>

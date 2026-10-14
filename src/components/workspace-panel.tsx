@@ -34,7 +34,7 @@ type Directory = {
   organizations: Organization[];
 };
 const messages: Record<string, string> = {
-  MFA_REQUIRED: "ابتدا تأیید دومرحله‌ای را برای این نشست فعال کنید.",
+  MFA_REQUIRED: "تأیید دومرحله‌ای حساب فعال است؛ ورود این نشست را کامل کنید.",
   MEMBERSHIP_REVOKED: "عضویت فعال در این مجموعه ندارید.",
   NOT_FOUND: "این مورد در مجموعهٔ فعال پیدا نشد.",
   OWNER_REQUIRED: "این تغییر فقط برای مالک مجموعه مجاز است.",
@@ -71,11 +71,11 @@ async function api<T>(
 }
 export function WorkspacePanel({
   name,
-  mfa,
+  managementReady,
   userId,
 }: {
   name: string;
-  mfa: boolean;
+  managementReady: boolean;
   userId: string;
 }) {
   const [directory, setDirectory] = useState<Directory>({
@@ -99,7 +99,7 @@ export function WorkspacePanel({
       const current = result.organizations.find(
         (o) => o.id === result.activeOrganizationId,
       );
-      if (current && current.role !== "member" && mfa) {
+      if (current && current.role !== "member" && managementReady) {
         const [people, invites] = await Promise.all([
           api<Member[]>("members"),
           api<Invite[]>("invitations"),
@@ -119,7 +119,7 @@ export function WorkspacePanel({
     } finally {
       setLoading(false);
     }
-  }, [mfa]);
+  }, [managementReady]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -179,7 +179,7 @@ export function WorkspacePanel({
           </p>
         </div>
         <div className="account-actions">
-          {active && active.role !== "member" && mfa && (
+          {active && active.role !== "member" && managementReady && (
             <Link href="/supervisor" className="button secondary">
               مرکز نظارت
             </Link>
@@ -199,16 +199,17 @@ export function WorkspacePanel({
           </button>
         </div>
       </div>
-      {!mfa && (
+      {!managementReady && (
         <div className="setup-note">
           <ShieldCheck size={23} />
           <div>
             <strong>یک قدم تا مدیریت امن</strong>
             <p>
-              برای ساخت مجموعه یا دسترسی مدیریتی، MFA همین نشست باید تأیید شود.
+              تأیید دومرحله‌ای حساب شما فعال است؛ برای ادامه، ورود این نشست را
+              کامل کنید.
             </p>
-            <Link className="text-action" href="/account/security">
-              فعال‌کردن تأیید دومرحله‌ای <ArrowLeft size={17} />
+            <Link className="text-action" href="/account/sign-in">
+              ورود دوباره به حساب <ArrowLeft size={17} />
             </Link>
           </div>
         </div>
@@ -287,14 +288,14 @@ export function WorkspacePanel({
             </select>
             <button
               className="button primary"
-              disabled={!mfa || busy || loading}
+              disabled={!managementReady || busy || loading}
             >
               ایجاد مجموعه <Plus size={18} />
             </button>
           </form>
         </section>
       </div>
-      {active && (active.role === "member" || mfa) && (
+      {active && (active.role === "member" || managementReady) && (
         <RealRoomsPanel
           key={active.id}
           organizationId={active.id}
@@ -302,7 +303,7 @@ export function WorkspacePanel({
           members={members}
         />
       )}
-      {active && active.role !== "member" && mfa && (
+      {active && active.role !== "member" && managementReady && (
         <>
           <section className="ops-panel">
             <div className="section-heading">

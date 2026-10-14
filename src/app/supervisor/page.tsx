@@ -29,8 +29,8 @@ export default async function SupervisorPage() {
         <section className="ops-panel">
           <h1>دسترسی به مرکز نظارت</h1>
           <p className="section-note">
-            یک مجموعهٔ فعال انتخاب کنید. دسترسی مدیریتی و تأیید دومرحله‌ای این
-            نشست برای مشاهده لازم است.
+            یک مجموعهٔ فعال انتخاب کنید و با حسابی وارد شوید که دسترسی مدیریتی
+            همان مجموعه را دارد.
           </p>
           <div className="auth-links">
             <Link href="/workspace">انتخاب مجموعه</Link>

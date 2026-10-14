@@ -171,22 +171,16 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       activeOrganizationId: null,
       organizations: [],
     });
-    await expect(
-      local.create(c.headers, {
-        name: "Private temporary school",
-        kind: "school",
-      }),
-    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+    const owned = await local.create(c.headers, {
+      name: "Private temporary school",
+      kind: "school",
+    });
     const enabled = await c.request("/two-factor/enable", { password });
     expect(enabled.status).toBe(200);
     const key = new URL(enabled.data.totpURI).searchParams.get("secret")!;
     expect(
       (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
     ).toBe(200);
-    const owned = await local.create(c.headers, {
-      name: "Private temporary school",
-      kind: "school",
-    });
     expect((await local.list(c.headers)).organizations).toHaveLength(1);
     const other = await account("VerifiedInviter");
     await tenancy.create(other.client.headers, {
@@ -296,11 +290,58 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       tenancy.list(new Headers({ cookie: "better-auth.session_token=forged" })),
     ).rejects.toMatchObject({ code: "SIGN_IN_REQUIRED" });
   });
-  it("enforces MFA proof on the current session before organization creation", async () => {
+  it("allows password-only owners to create organizations and supervise their own rooms", async () => {
     const { client } = await account("NoMfa", false);
+    const org = await tenancy.create(client.headers, {
+      name: "School",
+      kind: "school",
+    });
+    const repo = createRoomRepository(pool, auth);
+    await repo.create(client.headers, { title: "Password-only room" });
+    expect((await repo.supervision(client.headers)).rooms).toHaveLength(1);
+    const outsider = await account("PasswordOutsider", false);
     await expect(
-      tenancy.create(client.headers, { name: "School", kind: "school" }),
-    ).rejects.toMatchObject({ code: "MFA_REQUIRED" });
+      tenancy.switch(outsider.client.headers, org.id),
+    ).rejects.toMatchObject({ code: "MEMBERSHIP_REVOKED" });
+  });
+  it("optional MFA can only be disabled with the correct password and subsequent login needs no code", async () => {
+    const owner = await account("DisableOptionalMfa");
+    const org = await tenancy.create(owner.client.headers, {
+      name: "Optional security",
+      kind: "company",
+    });
+    expect(
+      (
+        await owner.client.request("/two-factor/disable", {
+          password: "Incorrect-password-value",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await auth.api.getSession({ headers: owner.client.headers }))?.user
+        .twoFactorEnabled,
+    ).toBe(true);
+    const oldHeaders = owner.client.headers;
+    expect(
+      (await owner.client.request("/two-factor/disable", { password })).status,
+    ).toBe(200);
+    expect(await auth.api.getSession({ headers: oldHeaders })).toBeNull();
+    expect(
+      (await auth.api.getSession({ headers: owner.client.headers }))?.user
+        .twoFactorEnabled,
+    ).toBe(false);
+    await owner.client.request("/sign-out", {});
+    const login = await owner.client.request("/sign-in/email", {
+      email: owner.email,
+      password,
+    });
+    expect(login.status).toBe(200);
+    expect(login.data.twoFactorRedirect).toBeUndefined();
+    await tenancy.switch(owner.client.headers, org.id);
+    expect(
+      (await createRoomRepository(pool, auth).supervision(owner.client.headers))
+        .rooms,
+    ).toHaveLength(0);
   });
   it("never upgrades an old first-factor session when another session enrolls MFA", async () => {
     const owner = await account("Enrollment", false),

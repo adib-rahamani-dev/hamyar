@@ -31,7 +31,9 @@ export default async function WorkspacePage() {
       <WorkspacePanel
         name={current.user.name}
         userId={current.user.id}
-        mfa={!!current.user.twoFactorEnabled && !!current.session.mfaVerifiedAt}
+        managementReady={
+          !current.user.twoFactorEnabled || !!current.session.mfaVerifiedAt
+        }
       />
     </AccountFrame>
   );

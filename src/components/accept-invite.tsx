@@ -14,8 +14,7 @@ export function AcceptInvite() {
     <section className="ops-panel auth-card">
       <h1>دعوت به مجموعه</h1>
       <p className="section-note">
-        با حسابی وارد شوید که ایمیل تأییدشدهٔ آن همان ایمیل دعوت است. دعوت نقش
-        مدیریتی به MFA همین نشست نیاز دارد.
+        با حسابی وارد شوید که ایمیل تأییدشدهٔ آن همان ایمیل دعوت است.
       </p>
       <button
         className="button primary"

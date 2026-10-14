@@ -34,8 +34,8 @@ test("real sign-in → MFA → organization → invite → role change → suspe
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(
     page.getByRole("button", { name: "ایجاد مجموعه" }),
-  ).toBeDisabled();
-  await page.getByRole("link", { name: "فعال‌کردن تأیید دومرحله‌ای" }).click();
+  ).toBeEnabled();
+  await page.getByRole("link", { name: "امنیت حساب", exact: true }).click();
   await page
     .getByLabel("رمز عبور حساب")
     .fill("Synthetic-browser-test-password!");
@@ -126,7 +126,7 @@ test("real sign-in → MFA → organization → invite → role change → suspe
   const denied = await student.request.get(
     "http://127.0.0.1:3100/api/workspace/members",
   );
-  expect(denied.status()).toBe(428);
+  expect(denied.status()).toBe(200);
   await page.getByRole("button", { name: "تعلیق", exact: true }).click();
   await expect(
     page.locator(".real-person").filter({ hasText: guest }),
@@ -150,6 +150,21 @@ test("real sign-in → MFA → organization → invite → role change → suspe
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(info.project.name === "mobile" ? 390 : 1440);
+  await page.goto("/account/security");
+  await page.getByLabel("رمز عبور حساب").fill("Incorrect-password-value");
+  await page
+    .getByRole("button", { name: "غیرفعال‌کردن تأیید دومرحله‌ای" })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "رمز عبور حساب را بررسی کنید",
+  );
+  await page
+    .getByLabel("رمز عبور حساب")
+    .fill("Synthetic-browser-test-password!");
+  await page
+    .getByRole("button", { name: "غیرفعال‌کردن تأیید دومرحله‌ای" })
+    .click();
+  await expect(page).toHaveURL(/\/workspace$/);
   await page.getByRole("button", { name: "خروج از حساب" }).click();
   await expect(page).toHaveURL(/\/account\/sign-in$/);
   const unauthorized = await page.request.get("/api/workspace/organizations");

@@ -3,16 +3,14 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
 import { authClient } from "@/modules/identity/client";
-import { normalizeDigits } from "@/modules/identity/input";
 import { useHydrated } from "./use-hydrated";
 
-type Mode = "sign-in" | "sign-up" | "reset" | "new-password" | "two-factor";
+type Mode = "sign-in" | "sign-up" | "reset" | "new-password";
 const titles: Record<Mode, string> = {
   "sign-in": "خوش آمدید",
   "sign-up": "شروع یک مسیر تازه",
   reset: "بازیابی حساب",
   "new-password": "رمز عبور تازه",
-  "two-factor": "تأیید ورود امن",
 };
 export function AuthPanel({
   mode,
@@ -31,7 +29,6 @@ export function AuthPanel({
 }) {
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
-  const [backup, setBackup] = useState(false);
   const hydrated = useHydrated();
   const blocked =
     !configured ||
@@ -61,19 +58,10 @@ export function AuthPanel({
                   email,
                   redirectTo: "/account/new-password",
                 })
-              : mode === "new-password"
-                ? await authClient.resetPassword({
-                    token,
-                    newPassword: password,
-                  })
-                : backup
-                  ? await authClient.twoFactor.verifyBackupCode({
-                      code: normalizeDigits(String(data.get("code"))),
-                    })
-                  : await authClient.twoFactor.verifyTotp({
-                      code: normalizeDigits(String(data.get("code"))),
-                      trustDevice: false,
-                    });
+              : await authClient.resetPassword({
+                  token,
+                  newPassword: password,
+                });
       if (result.error) {
         setNotice(
           result.error.code === "EMAIL_NOT_VERIFIED"
@@ -83,15 +71,8 @@ export function AuthPanel({
         return;
       }
       if (mode === "sign-in") {
-        if (
-          result.data &&
-          "twoFactorRedirect" in result.data &&
-          result.data.twoFactorRedirect
-        )
-          return;
         window.location.assign("/workspace");
-      } else if (mode === "two-factor") window.location.assign("/workspace");
-      else if (mode === "sign-up") {
+      } else if (mode === "sign-up") {
         if (!emailVerificationRequired) window.location.assign("/workspace");
         else
           setNotice("حساب ساخته شد. برای ورود، لینک تأیید ایمیل را باز کنید.");
@@ -115,11 +96,7 @@ export function AuthPanel({
       </span>
       <span className="eyebrow">حساب شما در همیار</span>
       <h1>{titles[mode]}</h1>
-      <p className="muted">
-        {mode === "two-factor"
-          ? "کد برنامهٔ تأییدکننده یا کد بازیابی را وارد کنید."
-          : "برای مدیریت مجموعه‌های خود، وارد حساب شوید."}
-      </p>
+      <p className="muted">برای مدیریت مجموعه‌های خود، وارد حساب شوید.</p>
       {localMailbox && (
         <div className="setup-note">
           <p>
@@ -199,22 +176,6 @@ export function AuthPanel({
               </p>
             </>
           )}
-          {mode === "two-factor" && (
-            <>
-              <label htmlFor="auth-code">
-                {backup ? "کد بازیابی" : "کد شش‌رقمی"}
-              </label>
-              <input
-                id="auth-code"
-                name="code"
-                dir="ltr"
-                inputMode={backup ? "text" : "numeric"}
-                autoComplete="one-time-code"
-                required
-                pattern={backup ? undefined : "[0-9۰-۹٠-٩]{6}"}
-              />
-            </>
-          )}
           <button
             className="button primary"
             disabled={blocked || busy || !hydrated}
@@ -226,9 +187,7 @@ export function AuthPanel({
                 ? "ورود به همیار"
                 : mode === "sign-up"
                   ? "ساخت حساب"
-                  : mode === "two-factor"
-                    ? "تأیید ورود"
-                    : "ادامه"}
+                  : "ادامه"}
             <ArrowLeft size={18} />
           </button>
           <p role="status" className="draft-notice">
@@ -242,10 +201,6 @@ export function AuthPanel({
             <Link href="/account/sign-up">ساخت حساب جدید</Link>
             <Link href="/account/reset">رمز را فراموش کردم</Link>
           </>
-        ) : mode === "two-factor" ? (
-          <button className="text-action" onClick={() => setBackup(!backup)}>
-            {backup ? "استفاده از برنامهٔ تأییدکننده" : "استفاده از کد بازیابی"}
-          </button>
         ) : (
           <Link href="/account/sign-in">بازگشت به ورود</Link>
         )}

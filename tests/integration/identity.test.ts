@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { migrate } from "../../scripts/migrate.mjs";
 import { createIdentity, type AuthMail } from "../../src/modules/identity/auth";
 import { createTenancy } from "../../src/modules/tenancy/service";
@@ -58,7 +58,7 @@ class Client {
   }
 }
 const password = "Synthetic-test-account-password!";
-async function account(name: string, mfa = true) {
+async function account(name: string) {
   const client = new Client(),
     email = `${name}-${randomUUID()}@example.test`.toLowerCase();
   expect(
@@ -71,33 +71,8 @@ async function account(name: string, mfa = true) {
   expect(
     (await client.request("/sign-in/email", { email, password })).status,
   ).toBe(200);
-  if (mfa) {
-    const enabled = await client.request("/two-factor/enable", { password });
-    expect(enabled.status).toBe(200);
-    const secret = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (await client.request("/two-factor/verify-totp", { code: totp(secret) }))
-        .status,
-    ).toBe(200);
-  }
   return { client, email };
 }
-function totp(secret: string) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = "";
-  for (const c of secret.toUpperCase())
-    bits += alphabet.indexOf(c).toString(2).padStart(5, "0");
-  const bytes = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
-  const hash = createHmac("sha1", bytes).update(counter).digest(),
-    offset = hash[hash.length - 1]! & 15;
-  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(
-    6,
-    "0",
-  );
-}
-
 beforeAll(async () => {
   const role = (
     await pool.query(
@@ -128,7 +103,87 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL identity and tenant boundary", () => {
-  it("temporary password signup preserves unverified email, MFA, invitation isolation and strict rollback", async () => {
+  it("retires legacy MFA metadata without deleting accounts and preserves tenant boundaries", async () => {
+    const legacy = await account("LegacyMfa");
+    const id = (await auth.api.getSession({ headers: legacy.client.headers }))!
+      .user.id;
+    await pool.query(
+      "UPDATE auth_user SET two_factor_enabled=true WHERE id=$1",
+      [id],
+    );
+    await pool.query(
+      "UPDATE auth_session SET mfa_verified_at=now() WHERE user_id=$1",
+      [id],
+    );
+    await pool.query(
+      "INSERT INTO auth_two_factor(id,user_id,secret,backup_codes) VALUES($1,$2,$3,$4)",
+      [randomUUID(), id, "synthetic-retired-secret", "synthetic-retired-codes"],
+    );
+    const fresh = new Client();
+    const login = await fresh.request("/sign-in/email", {
+      email: legacy.email,
+      password,
+    });
+    expect(login.status).toBe(200);
+    expect(login.data.twoFactorRedirect).toBeUndefined();
+    const org = await tenancy.create(fresh.headers, {
+      name: "Password school",
+      kind: "school",
+    });
+    const outsider = await account("PasswordOutsider");
+    await expect(
+      tenancy.switch(outsider.client.headers, org.id),
+    ).rejects.toMatchObject({ code: "MEMBERSHIP_REVOKED" });
+    const retired = await auth.handler(
+      new Request(`${base}/api/auth/two-factor/enable`, {
+        method: "POST",
+        headers: {
+          ...Object.fromEntries(fresh.headers),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      }),
+    );
+    expect(retired.status).toBe(404);
+    const owner = new Pool({
+      connectionString: process.env.TEST_MIGRATION_DATABASE_URL,
+    });
+    try {
+      const sql = await import("node:fs/promises").then((fs) =>
+        fs.readFile("migrations/0005_disable_authenticator_2fa.sql", "utf8"),
+      );
+      await owner.query(sql);
+    } finally {
+      await owner.end();
+    }
+    expect(
+      (
+        await pool.query(
+          "SELECT two_factor_enabled FROM auth_user WHERE id=$1",
+          [id],
+        )
+      ).rows[0].two_factor_enabled,
+    ).toBe(false);
+    expect(
+      (
+        await pool.query("SELECT id FROM auth_two_factor WHERE user_id=$1", [
+          id,
+        ])
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await pool.query(
+          "SELECT id FROM auth_session WHERE user_id=$1 AND mfa_verified_at IS NOT NULL",
+          [id],
+        )
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (await auth.api.getSession({ headers: fresh.headers }))?.user.id,
+    ).toBe(id);
+  });
+  it("temporary password signup preserves unverified email, invitation isolation and strict rollback", async () => {
     let deliveries = 0;
     const temporary = createIdentity(pool, {
       url: base,
@@ -175,12 +230,6 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       name: "Private temporary school",
       kind: "school",
     });
-    const enabled = await c.request("/two-factor/enable", { password });
-    expect(enabled.status).toBe(200);
-    const key = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
-    ).toBe(200);
     expect((await local.list(c.headers)).organizations).toHaveLength(1);
     const other = await account("VerifiedInviter");
     await tenancy.create(other.client.headers, {
@@ -229,9 +278,6 @@ describe("real PostgreSQL identity and tenant boundary", () => {
     ).toBe(403);
     expect(
       (await c.request("/sign-in/email", { email, password })).status,
-    ).toBe(200);
-    expect(
-      (await c.request("/two-factor/verify-totp", { code: totp(key) })).status,
     ).toBe(200);
     expect((await local.list(c.headers)).organizations[0].id).toBe(owned.id);
     expect(deliveries).toBe(0);
@@ -290,120 +336,8 @@ describe("real PostgreSQL identity and tenant boundary", () => {
       tenancy.list(new Headers({ cookie: "better-auth.session_token=forged" })),
     ).rejects.toMatchObject({ code: "SIGN_IN_REQUIRED" });
   });
-  it("allows password-only owners to create organizations and supervise their own rooms", async () => {
-    const { client } = await account("NoMfa", false);
-    const org = await tenancy.create(client.headers, {
-      name: "School",
-      kind: "school",
-    });
-    const repo = createRoomRepository(pool, auth);
-    await repo.create(client.headers, { title: "Password-only room" });
-    expect((await repo.supervision(client.headers)).rooms).toHaveLength(1);
-    const outsider = await account("PasswordOutsider", false);
-    await expect(
-      tenancy.switch(outsider.client.headers, org.id),
-    ).rejects.toMatchObject({ code: "MEMBERSHIP_REVOKED" });
-  });
-  it("optional MFA can only be disabled with the correct password and subsequent login needs no code", async () => {
-    const owner = await account("DisableOptionalMfa");
-    const org = await tenancy.create(owner.client.headers, {
-      name: "Optional security",
-      kind: "company",
-    });
-    expect(
-      (
-        await owner.client.request("/two-factor/disable", {
-          password: "Incorrect-password-value",
-        })
-      ).status,
-    ).toBe(400);
-    expect(
-      (await auth.api.getSession({ headers: owner.client.headers }))?.user
-        .twoFactorEnabled,
-    ).toBe(true);
-    const oldHeaders = owner.client.headers;
-    expect(
-      (await owner.client.request("/two-factor/disable", { password })).status,
-    ).toBe(200);
-    expect(await auth.api.getSession({ headers: oldHeaders })).toBeNull();
-    expect(
-      (await auth.api.getSession({ headers: owner.client.headers }))?.user
-        .twoFactorEnabled,
-    ).toBe(false);
-    await owner.client.request("/sign-out", {});
-    const login = await owner.client.request("/sign-in/email", {
-      email: owner.email,
-      password,
-    });
-    expect(login.status).toBe(200);
-    expect(login.data.twoFactorRedirect).toBeUndefined();
-    await tenancy.switch(owner.client.headers, org.id);
-    expect(
-      (await createRoomRepository(pool, auth).supervision(owner.client.headers))
-        .rooms,
-    ).toHaveLength(0);
-  });
-  it("never upgrades an old first-factor session when another session enrolls MFA", async () => {
-    const owner = await account("Enrollment", false),
-      old = new Client();
-    expect(
-      (
-        await old.request("/sign-in/email", {
-          email: owner.email,
-          password,
-          mfaVerifiedAt: new Date(),
-          activeOrganizationId: randomUUID(),
-        })
-      ).status,
-    ).toBe(200);
-    const enabled = await owner.client.request("/two-factor/enable", {
-      password,
-    });
-    const secret = new URL(enabled.data.totpURI).searchParams.get("secret")!;
-    expect(
-      (
-        await owner.client.request("/two-factor/verify-totp", {
-          code: totp(secret),
-        })
-      ).status,
-    ).toBe(200);
-    const org = await tenancy.create(owner.client.headers, {
-      name: "Enrollment school",
-      kind: "school",
-    });
-    await expect(tenancy.switch(old.headers, org.id)).rejects.toMatchObject({
-      code: "MFA_REQUIRED",
-    });
-    const fresh = new Client();
-    const login = await fresh.request("/sign-in/email", {
-      email: owner.email,
-      password,
-    });
-    expect(login.data.twoFactorRedirect).toBe(true);
-    await expect(tenancy.list(fresh.headers)).rejects.toMatchObject({
-      code: "SIGN_IN_REQUIRED",
-    });
-    expect(
-      (
-        await fresh.request("/two-factor/verify-backup-code", {
-          code: enabled.data.backupCodes[0],
-        })
-      ).status,
-    ).toBe(200);
-    await tenancy.switch(fresh.headers, org.id);
-    expect(await tenancy.members(fresh.headers)).toHaveLength(1);
-    const replay = new Client();
-    await replay.request("/sign-in/email", { email: owner.email, password });
-    expect(
-      (
-        await replay.request("/two-factor/verify-backup-code", {
-          code: enabled.data.backupCodes[0],
-        })
-      ).status,
-    ).not.toBe(200);
-  }, 30000);
   it("password recovery revokes sessions and accepts the reset token only once", async () => {
-    const value = await account("Recovery", false),
+    const value = await account("Recovery"),
       old = value.client.headers;
     expect(
       (
@@ -449,7 +383,7 @@ describe("real PostgreSQL identity and tenant boundary", () => {
   }, 30000);
   it("an expired invitation is denied and audit rows cannot be changed by the app role", async () => {
     const owner = await account("Expiry"),
-      invited = await account("ExpiryGuest", false);
+      invited = await account("ExpiryGuest");
     const org = await tenancy.create(owner.client.headers, {
       name: "Expiry company",
       kind: "company",
@@ -500,7 +434,7 @@ describe("real PostgreSQL identity and tenant boundary", () => {
   it("isolates two organizations, atomically accepts invitations once, and revokes suspended membership", async () => {
     const a = await account("SchoolA"),
       b = await account("SchoolB"),
-      student = await account("Student", false);
+      student = await account("Student");
     const orgA = await tenancy.create(a.client.headers, {
       name: "School A",
       kind: "school",
@@ -595,7 +529,7 @@ describe("real PostgreSQL identity and tenant boundary", () => {
   it("persists rooms and assignments with tenant separation, server-derived roles and member admission", async () => {
     const a = await account("RoomOwnerA"),
       b = await account("RoomOwnerB"),
-      student = await account("RoomStudent", false);
+      student = await account("RoomStudent");
     const repo = createRoomRepository(pool, auth);
     await tenancy.create(a.client.headers, {
       name: "Room Organization A",
@@ -683,7 +617,7 @@ describe("real PostgreSQL identity and tenant boundary", () => {
   }, 30000);
   it("cancels invitations and makes sign-out revoke an already issued session", async () => {
     const owner = await account("Owner"),
-      invited = await account("Invitee", false);
+      invited = await account("Invitee");
     await tenancy.create(owner.client.headers, {
       name: "Personal",
       kind: "personal",

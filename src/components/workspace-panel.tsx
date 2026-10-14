@@ -34,7 +34,6 @@ type Directory = {
   organizations: Organization[];
 };
 const messages: Record<string, string> = {
-  MFA_REQUIRED: "تأیید دومرحله‌ای حساب فعال است؛ ورود این نشست را کامل کنید.",
   MEMBERSHIP_REVOKED: "عضویت فعال در این مجموعه ندارید.",
   NOT_FOUND: "این مورد در مجموعهٔ فعال پیدا نشد.",
   OWNER_REQUIRED: "این تغییر فقط برای مالک مجموعه مجاز است.",
@@ -71,11 +70,9 @@ async function api<T>(
 }
 export function WorkspacePanel({
   name,
-  managementReady,
   userId,
 }: {
   name: string;
-  managementReady: boolean;
   userId: string;
 }) {
   const [directory, setDirectory] = useState<Directory>({
@@ -99,7 +96,7 @@ export function WorkspacePanel({
       const current = result.organizations.find(
         (o) => o.id === result.activeOrganizationId,
       );
-      if (current && current.role !== "member" && managementReady) {
+      if (current && current.role !== "member") {
         const [people, invites] = await Promise.all([
           api<Member[]>("members"),
           api<Invite[]>("invitations"),
@@ -119,7 +116,7 @@ export function WorkspacePanel({
     } finally {
       setLoading(false);
     }
-  }, [managementReady]);
+  }, []);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -179,7 +176,7 @@ export function WorkspacePanel({
           </p>
         </div>
         <div className="account-actions">
-          {active && active.role !== "member" && managementReady && (
+          {active && active.role !== "member" && (
             <Link href="/supervisor" className="button secondary">
               مرکز نظارت
             </Link>
@@ -199,21 +196,6 @@ export function WorkspacePanel({
           </button>
         </div>
       </div>
-      {!managementReady && (
-        <div className="setup-note">
-          <ShieldCheck size={23} />
-          <div>
-            <strong>یک قدم تا مدیریت امن</strong>
-            <p>
-              تأیید دومرحله‌ای حساب شما فعال است؛ برای ادامه، ورود این نشست را
-              کامل کنید.
-            </p>
-            <Link className="text-action" href="/account/sign-in">
-              ورود دوباره به حساب <ArrowLeft size={17} />
-            </Link>
-          </div>
-        </div>
-      )}
       <p role="status" className="draft-notice">
         {loading ? "در حال دریافت مجموعه‌ها…" : notice}
       </p>
@@ -286,16 +268,13 @@ export function WorkspacePanel({
               <option value="company">شرکت</option>
               <option value="personal">شخصی</option>
             </select>
-            <button
-              className="button primary"
-              disabled={!managementReady || busy || loading}
-            >
+            <button className="button primary" disabled={busy || loading}>
               ایجاد مجموعه <Plus size={18} />
             </button>
           </form>
         </section>
       </div>
-      {active && (active.role === "member" || managementReady) && (
+      {active && (
         <RealRoomsPanel
           key={active.id}
           organizationId={active.id}
@@ -303,7 +282,7 @@ export function WorkspacePanel({
           members={members}
         />
       )}
-      {active && active.role !== "member" && managementReady && (
+      {active && active.role !== "member" && (
         <>
           <section className="ops-panel">
             <div className="section-heading">

@@ -14,10 +14,7 @@ export default async function SecurityPage() {
   if (!current) redirect("/account/sign-in");
   return (
     <AccountFrame>
-      <SecurityPanel
-        enabled={!!current.user.twoFactorEnabled}
-        sessionId={current.session.id}
-      />
+      <SecurityPanel sessionId={current.session.id} />
     </AccountFrame>
   );
 }

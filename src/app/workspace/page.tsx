@@ -28,13 +28,7 @@ export default async function WorkspacePage() {
   if (!current) redirect("/account/sign-in");
   return (
     <AccountFrame>
-      <WorkspacePanel
-        name={current.user.name}
-        userId={current.user.id}
-        managementReady={
-          !current.user.twoFactorEnabled || !!current.session.mfaVerifiedAt
-        }
-      />
+      <WorkspacePanel name={current.user.name} userId={current.user.id} />
     </AccountFrame>
   );
 }

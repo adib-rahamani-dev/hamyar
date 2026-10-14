@@ -6,13 +6,7 @@ import {
   emailVerificationRequired,
 } from "@/modules/identity/config";
 import { developmentMailboxEnabled } from "@/modules/identity/dev-mail-config";
-const screens = [
-  "sign-in",
-  "sign-up",
-  "reset",
-  "new-password",
-  "two-factor",
-] as const;
+const screens = ["sign-in", "sign-up", "reset", "new-password"] as const;
 export const dynamic = "force-dynamic";
 export default async function AccountPage({
   params,

@@ -1,5 +1,5 @@
-# Linux deployment of the current web/account/organization slice.
-# Media, recording, shared board and email delivery are separate unfinished work.
+# One Linux host: web + PG, optional self-owned media + session gateway.
+# Same images in normal/domestic modes. Prepare TLS, DNS and images before isolation.
 name: hamyar-self-host
 services:
   postgres:
@@ -19,11 +19,56 @@ services:
         bind:
           create_host_path: false
     networks: [database]
+    ports: ["127.0.0.1:55432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hamyar_bootstrap -d hamyar"]
       interval: 5s
       timeout: 3s
       retries: 15
+    logging:
+      options: { max-size: "10m", max-file: "3" }
+  media:
+    image: livekit/livekit-server:v1.13.9
+    profiles: [media]
+    restart: unless-stopped
+    network_mode: host
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes:
+      - type: bind
+        source: ./private/livekit.yaml
+        target: /etc/livekit.yaml
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ./private/tls
+        target: /etc/hamyar-tls
+        read_only: true
+        bind: { create_host_path: false }
+    security_opt: [no-new-privileges:true]
+    logging:
+      options: { max-size: "10m", max-file: "3" }
+  gateway:
+    image: ${HAMYAR_GATEWAY_IMAGE:-hamyar-gateway:release-local}
+    build: { context: ../.., target: gateway }
+    profiles: [media]
+    restart: unless-stopped
+    network_mode: host
+    env_file: ./private/gateway.env
+    depends_on:
+      postgres: { condition: service_healthy }
+      media: { condition: service_started }
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     logging:
       options: { max-size: "10m", max-file: "3" }
   migrate:

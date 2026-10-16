@@ -2,6 +2,7 @@
 # TLS/L4 proxy, firewall, secrets, admission/reconnect gate and tests are mandatory.
 # Review against the pinned LiveKit server release before running.
 port: 7880
+bind_addresses: [127.0.0.1]
 log_level: warn
 rtc:
   tcp_port: 7881
@@ -11,15 +12,17 @@ rtc:
   node_ip: REPLACE_WITH_REACHABLE_SERVER_IP
   # Explicit domestic STUN avoids the default external STUN dependency.
   stun_servers: ["turn.hamyar.example:3478"]
-redis:
-  address: 127.0.0.1:6379
-  password: REPLACE_WITH_PRIVATE_REDIS_PASSWORD
+# Single-node release. Add private Redis only when implementing multi-node/HA.
 keys:
   REPLACE_WITH_PRIVATE_API_KEY: REPLACE_WITH_PRIVATE_API_SECRET
 turn:
   enabled: true
   domain: turn.hamyar.example
   udp_port: 3478
-  tls_port: 443
-  # For a properly configured L4 TLS terminator only, not an HTTP reverse proxy.
-  external_tls: true
+  tls_port: 5349
+  cert_file: /etc/hamyar-tls/fullchain.pem
+  key_file: /etc/hamyar-tls/privkey.pem
+room:
+  enable_remote_unmute: false
+  # Operator limit, not a measured performance guarantee. Tune after load tests.
+  max_participants: 40

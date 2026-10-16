@@ -1,83 +1,56 @@
 # hamyar | همیار
 
-پایهٔ پلتفرم کلاس و جلسهٔ آنلاین چندسازمانی برای مدارس، شرکت‌ها و افراد؛ با رابط فارسی RTL، تم سبز روشن/تیره و معماری مستقل رسانه.
+کلاس و جلسهٔ آنلاین چندسازمانی برای مدرسه، شرکت و شخص؛ فارسی/RTL، دو تم و رابط ساده با گلس محدود. یک سورس برای حالت عادی و زیرساخت داخلی، بدون الزام حساب Cloud رسانه یا realtime.
 
-**وضعیت: حساب، سازمان و اتاق پایدار؛ محصول کامل هنوز آماده نیست.** Better Auth، ورود با رمز، PostgreSQL، مرز سازمانی، دعوت، اعضا، اتاق و مرکز نظارت خصوصی پیاده و آزموده‌اند. Neon Free و کلید نشست روی Vercel تنظیم شده‌اند؛ ثبت‌نام/ورود با رمز موقتاً بدون تأیید ایمیل فعال است؛ بازیابی بدون فرستنده و پذیرش دعوت با ایمیل تأییدنشده غیرفعال‌اند. رسانهٔ چندنفره، تخته/چت مشترک و ضبط هنوز متصل نیستند. دمو از انتشار عمومی خارج شده است. وضعیت دقیق در [نقشهٔ اجرا](docs/ROADMAP.md).
+**وضعیت جاری:** حساب/سازمان/اتاق واقعی، چت و تختهٔ مشترک ذخیره‌شده، دعوت اتاق محدود، اجازه/اخراج، تیکت و برند مجموعه ساخته شده‌اند. دریافت/انتشار رسانه با SFU خودمیزبان و دو مرورگر محلی آزموده شده است. نسخهٔ عمومی ورسل وب/API را اجرا می‌کند و هنوز مقصد عمومی SFU/TURN ندارد. ضبط سروری، فایل خصوصی، مدل آموزشی کامل، ظرفیت‌سنجی و پذیرش VPS/اینترنت داخلی بازند؛ این نسخه هنوز محصول کامل دارای SLA نیست.
 
-## اجرا
+[نسخهٔ آزمایشی عمومی](https://hamyar-chi.vercel.app/workspace) · [وضعیت دقیق و راه تست](docs/CURRENT_RELEASE.md) · [نقشهٔ اجرا](docs/ROADMAP.md)
 
-Node.js 22.13+ در شاخهٔ 22 یا Node.js 24/26؛ برای CI و استقرار، Node.js 22 LTS انتخاب اولیه است.
+## خواندن سورس
 
-```powershell
+از [راهنمای فارسی بخش‌های سورس](docs/CODE_GUIDE.fa.md) شروع کنید؛ مسیر هر ماژول، جریان مرورگر→API→DB، امنیت سازمان، چت/تخته، دعوت و رسانه را توضیح می‌دهد. قبل از تغییر PRODUCT، ARCHITECTURE، DESIGN_SYSTEM و SECURITY را بخوانید. تصمیم تازهٔ معماری ADR می‌خواهد.
+
+## اجرا و بررسی
+
+Node.js 22.13+ در شاخهٔ22 یا24/26، با lockfile همین release:
+
+```bash
 npm ci
+# env محلی موجود را بازنویسی نکنید؛ .env.example فقط قالب است.
+# PostgreSQL واقعی + نقش migration مستقل و app غیرمالک لازم‌اند.
+npm run db:migrate
 npm run dev
-```
-
-[پنل نمونه](http://localhost:3000)، [اتاق نمونه](http://localhost:3000/rooms/demo) و [liveness](http://localhost:3000/api/health). دمو برای اجرا نیاز به env یا Docker ندارد. health فقط پاسخ‌گویی برنامه را بررسی می‌کند و readiness سرویس‌ها نیست.
-
-## فناوری و ساختار
-
-رابط گلس در دو تم با موشن کوتاه، نور زمینهٔ آرام و واکنش کم‌دامنه به صدای میکروفون. دکمهٔ جلوه‌ها حرکت‌ها را خاموش می‌کند و `prefers-reduced-motion` خودکار رعایت می‌شود. برای امتحان دستگاه‌ها در اتاق روی دوربین/میکروفون کلیک کنید؛ هنگام خروج، trackها بسته می‌شوند. این قابلیت به معنی اتصال به کاربران دیگر نیست.
-
-Next.js App Router، React، TypeScript strict، LiveKit SDK، Drizzle، Better Auth، pg، CSS tokens، Vazirmatn محلی و Lucide نصب‌شده‌اند. Redis/BullMQ، Yjs و Egress/S3 مراحل بعدند. `package-lock.json` مرجع نسخه‌های دقیق است.
-
-```text
-src/app/                 مسیرها، layout، health و توکن‌های طراحی
-src/components/          پنل، تم، اتاق دمو و تختهٔ محلی
-src/modules/rooms/       سیاست دسترسی سازمان و اتاق با آزمون منفی
-src/modules/media/       grants، adapter server-only و تنظیمات کیفیت
-src/lib/                 دادهٔ نمونه و ابزار نمایش
-tests/e2e/               بررسی رفتاری دسکتاپ و موبایل
-docs/                    هدف، طراحی، معماری، امنیت و تصمیم‌ها
-.github/                 CI و بررسی به‌روزرسانی وابستگی‌ها
-```
-
-## زیرساخت توسعه
-
-Docker Desktop با Linux containers باید اجرا باشد. برای نسخهٔ عملیاتی رسانه، Linux، دامنه، TLS، TURN و پهنای باند واقعی لازم است؛ Laragon تنها محیط توسعهٔ سورس است.
-
-```powershell
-# فقط اگر .env.local از قبل وجود ندارد:
-if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
-docker compose config --quiet
-docker compose up -d
-```
-
-compose سرویس‌های PostgreSQL، Redis و LiveKit را فقط روی loopback منتشر می‌کند. رمزها صرفاً توسعه‌ای‌اند. LiveKit روی `ws://localhost:7880` و با devkey/secret آماده می‌شود؛ هیچ endpoint عمومی join در این نسخه وجود ندارد. برای آزمایش از دستگاه دیگر باید تنظیم آدرس/ICE و امنیت بازبینی شود. Egress، S3 و TURN production در این compose وجود ندارند. اجرای خود compose در محیط اولیه تأیید نشده، چون Docker daemon خاموش بود؛ syntax و وجود tag تصاویر بررسی شده‌اند.
-
-## بررسی کیفیت
-
-```powershell
 npm run check
 npm run build
-npm run test:e2e
-npm audit
 ```
 
-روی Windows، آزمون مرورگر به‌طور پیش‌فرض از Edge نصب‌شده استفاده می‌کند. روی Linux/macOS ابتدا `npx playwright install chromium` را اجرا کنید. `PLAYWRIGHT_CHANNEL` را می‌توان برای استفاده از Chrome/Edge تنظیم کرد. تست E2E به production build نیاز دارد و سرور را خودکار اجرا می‌کند؛ CI همهٔ مراحل را اجرا می‌کند. اگر port 3000 اشغال است، قبل از آزمون مطمئن شوید سرور همیار روی آن اجراست.
+مدیریت در `/workspace`، اتاق در `/rooms/UUID`، نظارت `/supervisor`، برند `/settings` و تیکت `/support`. شروع اتاق و لینک دعوت، گوشی دوم را وارد می‌کند. polling چت/تخته هر۸ثانیه است. رسانه فقط پس از کلیک اتصال و با سرور واقعی آماده می‌شود. health فقط liveness است. ثبت‌نام موقت بدون تأیید ایمیل مالکیت ایمیل را اثبات نمی‌کند؛ بازیابی بدون SMTP/فرستنده غیرفعال است.
 
-## اسناد مرجع
+```bash
+# با TEST_DATABASE_URL و TEST_MIGRATION_DATABASE_URL در DB مستقل _test:
+npm run test:integration
+npm run test:signup:e2e
+npm run test:public:e2e
+npm run build:gateway
+npm run build:self-host
+npm run test:standalone:e2e
+```
 
-نسخهٔ عمومی دیگر دادهٔ نمونه نمایش نمی‌دهد: ورودی به `/workspace` می‌رود و `/demo` و `/rooms/demo` در production/Vercel برابر 404 هستند. رابط قدیمی تنها برای regression محلی با `NODE_ENV=development` و `HAMYAR_LOCAL_DEMOS=1` اجرا می‌شود. `npm run test:e2e` رابط محلی و `npm run test:public:e2e` مرز production را آزمون می‌کنند. دیتابیس فعال به معنی آماده‌بودن رسانه یا signup عمومی نیست؛ [ADR 0004](docs/adr/0004-public-entry-and-managed-postgres.md) وضعیت را توضیح می‌دهد.
+Playwright روی Windows از Edge نصب‌شده استفاده می‌کند؛ Linux/macOS به نصب Chromium آزمون نیاز دارند. `npm run test:e2e` فقط regression نمونهٔ محلی توسعه است؛ روی production/Vercel نمونه‌ها404 هستند. هیچ دادهٔ نمونه/حساب آزمون به تولید seed نمی‌شود.
 
-برش حساب و سازمان واقعی در `/account/sign-in`، `/account/security` و `/workspace` ساخته شده است: ثبت‌نام/verification/reset، نشست DB، MFA، ساخت/انتخاب سازمان، اعضا، اتاق پایدار و دعوت محدود. روی PostgreSQL با role غیرمالک آزموده می‌شود. در استقرار فاقد env معتبر فعال نیست؛ [راهنمای هویت](docs/IDENTITY_SETUP.md) تنظیمات و آزمون‌ها را توضیح می‌دهد.
+## دو حالت و اجرای مستقل
 
-پنل‌های مدیریت در `/supervisor`، `/support`، `/members` و `/settings` مسیر مستقل دارند. `/api/status` مشخصات عمومی واقعی اجرای وب را می‌دهد؛ ظرفیت رسانه و دادهٔ میزبان اتاق هنوز متصل نیستند. پشتیبانی فعلاً پیش‌نویس محلی با ذخیره/حذف و دانلود است و ارسال سروری ندارد.
+[SELF_HOSTING](docs/SELF_HOSTING.md) ساخت سه image وب/migration/gateway، PG و SFU/TURN، TLS proxy، کلیدهای جدا و انتقال داده را توضیح می‌دهد. `HAMYAR_DEPLOYMENT_MODE=normal|domestic` یک release را با تنظیمات متفاوت اجرا می‌کند؛ انتقال خودکار داده و failover نیست. [ADR0008](docs/adr/0008-persisted-classroom-and-owned-media.md) دلیل انتخاب را ثبت می‌کند.
 
-- [قواعد توسعه](AGENTS.md)
-- [هدف و دامنهٔ محصول](docs/PRODUCT.md)
-- [معماری و دلایل انتخاب فناوری](docs/ARCHITECTURE.md)
-- [سیستم طراحی](docs/DESIGN_SYSTEM.md)
-- [امنیت و مدل تهدید](docs/SECURITY.md)
-- [جریان ضبط میزبان](docs/RECORDING.md)
-- [نقشهٔ اجرا](docs/ROADMAP.md)
-- [پرامپت جامع تکمیل تا نسخهٔ قابل استفاده](docs/BUILD_TO_PRODUCTION_PROMPT.fa.md)
-- [مرز وضعیت عمومی و پیش‌نویس پشتیبانی](docs/adr/0002-public-status-and-support-drafts.md)
-- [هویت واقعی، MFA و مرز سازمان](docs/adr/0003-identity-and-tenant-boundary.md)
-- [تصمیم معماری نخست](docs/adr/0001-platform-foundation.md)
+```bash
+# بعد از ساخت و بررسی imageهای Linux و commit سورس؛ این دستور pull نمی‌کند:
+npm run release:offline -- hamyar-web:RELEASE hamyar-migration:RELEASE hamyar-gateway:RELEASE postgres:17.6-alpine livekit/livekit-server:v1.13.9
+```
 
-رسانه با WebRTC و LiveKit SFU مستقل از سرور پنل عبور خواهد کرد. سوپروایزر در محدودهٔ سازمان خودش کنترل دارد. رمزنگاری انتقال با E2EE فرق دارد؛ حالت E2EE و ضبط سمت سرور نیازمند تصمیم مستقل‌اند. هیچ ادعای نفوذناپذیری مطلق یا ظرفیت اندازه‌گیری‌نشده نداریم.
+archive سورس commit، imageهای موجود و checksum در .artifacts است؛ secret، TLS خصوصی و backup جداگانه و امن منتقل می‌شوند. قبل از قطعی باید داده/DNS/TLS/image آماده و شروع سرد با egress بین‌المللی بسته آزموده شود. Docker daemon این دستگاه در دسترس نیست؛ صحت Compose جای آزمون container/VPS واقعی را نمی‌گیرد.
 
-## اجرا روی سرور خودت
+## ساختار و فناوری
 
-ورسل محیط آزمایش فعلی است. [راهنمای خودمیزبانی و آمادگی شبکهٔ داخلی](docs/SELF_HOSTING.md) و [ADR 0006](docs/adr/0006-portable-self-hosting.md) مسیر جاری‌اند. Dockerfile وب مستقل و migration جدا، Compose خصوصی PostgreSQL و template رسانه اضافه شدند؛ اجرا روی VPS، اتصال کلاس چندنفره و ضبط هنوز انجام نشده‌اند. LiveKit Cloud شرط کارکرد محصول نیست؛ کلید رسانه می‌تواند از سرور خود همیار باشد. برای زمان قطعی، image، داده، فایل و DNS/TLS داخلی باید پیشاپیش آماده و آزموده شوند.
+`src/app` مسیر و API؛ `src/components` نمایش؛ `src/modules` منطق دامنه؛ `migrations` schema/RLS؛ `scripts` عملیات؛ `infra/self-host` نصب؛ `tests` رفتار واقعی؛ `docs` قرارداد و توضیح. Next.js، React، TypeScript strict، PostgreSQL/Drizzle، Better Auth، LiveKit، ws، SMTP/Nodemailer، CSS tokens، Lucide و Vazirmatn محلی. Redis/Yjs/Egress برای نیازهای بعدی هستند؛ در runtime تک‌گرهٔ فعلی ضروری نیستند.
+
+secret، env خصوصی، ضبط، اطلاعات دانش‌آموز و artifact آزمون وارد Git نشوند. org/role تنها از نشست معتبر، مجوز deny-default، SFU مستقل از وب، خاموش‌کردن دستگاه با رضایت/اقدام مالک دستگاه و بدون ادعای نفوذناپذیری یا ظرفیت خیالی.

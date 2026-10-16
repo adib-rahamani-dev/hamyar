@@ -1,74 +1,41 @@
-# امنیت و مدل تهدید
+# امنیت همیار
 
-هیچ سامانه‌ای نفوذناپذیری مطلق ندارد. هدف کنترل‌های چندلایه، کاهش سطح حمله، آزمون و پاسخ به حادثه است. این نسخه تنها برخی پایه‌ها را دارد؛ برای استفادهٔ واقعی نیازمند اجرای موارد roadmap است.
+نسخهٔ جاری با این سند و ADRهای 0003، 0007 و 0008 تعریف می‌شود. هیچ ادعای «ضدهک» یا ظرفیت بدون آزمون مستقل مجاز نیست.
 
-## دسترسی
+## هویت و سازمان
 
-نقش سازمان: owner، admin، supervisor، member. نقش اتاق: host، presenter، attendee. مدرس می‌تواند host اتاق‌های تخصیص‌یافته باشد؛ دانش‌آموز attendee است. مجوز نشر صوت، دوربین و صفحه جدا و با انقضا هستند.
+- رمز با کتابخانهٔ هویت hash می‌شود؛ نشست واقعی DB و cookie HttpOnly/SameSite دارد. cookie cache غیرفعال است؛ logout/revoke روی نشست تازه بررسی می‌شوند.
+- MFA مبتنی بر کدساز از حساب معمولی به درخواست مالک حذف شده؛ migration 0005 proof و secret قدیمی را پاک می‌کند. break-glass پلتفرم مستقل است و ساخته نشده.
+- org از نشست معتبر و role از membership تازه است؛ مقادیر ارسالی کلاینت قابل اعتماد نیستند. query/mutation در transaction با SET LOCAL context اجرا می‌شود.
+- runtime غیرمالک و بدون superuser/bypass است؛ ۱۳ جدول سازمانی FORCE RLS دارند. FK مرکب جلوی ارتباط رکوردهای دو سازمان را می‌گیرد. migration credential در وب/gateway قرار نمی‌گیرد. audit از app قابل UPDATE/DELETE نیست.
+- روی حالت موقت `AUTH_EMAIL_VERIFICATION_REQUIRED=false`، ثبت‌نام/ورود ممکن است ولی emailVerified همچنان false و app.verified_email تهی است. دعوت ایمیلی و بازیابی بدون فرستنده دور زده نمی‌شوند. SMTP TLS یا فرستندهٔ اختیاری باید جدا تنظیم شود.
 
-سوپروایزر تمام اتاق‌های سازمان خودش را می‌بیند و کنترل می‌کند. مدیر پلتفرم مجوز جهانی ضمنی در JWT ندارد؛ دسترسی اضطراری با MFA، دلیل، scope، expiry و audit. full access به معنی دورزدن رضایت دستگاه نیست: remote mute مجاز؛ remote unmute درخواست به کاربر است.
+## API و ورودی
 
-توکن در server-only صادر می‌شود؛ `room` و identity سازمانی، TTL پنج دقیقه، publishSources محدود، roomAdmin=false. policy باید از رکوردهای server ساخته شود؛ کپی role یا tenantId از بدنهٔ درخواست ممنوع. انقضای توکن پایان مجوز نشست برقرارشده نیست؛ برای downgrade، expiry grant و اخراج باید permission update/participant removal انجام شود.
+Origin mutation باید دقیقاً BETTER_AUTH_URL باشد. JSON strict، سقف ۸ KiB و counter مشترک DB برابر ۶۰ درخواست workspace در دقیقه برای هر user وجود دارد؛ polling هم از این بودجه مصرف می‌کند و برای مقیاس مدرسه باید اندازه‌گیری/تنظیم شود. خطای خام SQL، URL DB و credential به پاسخ نمی‌روند. کتابخانهٔ auth rate limit DB جدا دارد؛ NAT مدرسه باید آزموده شود.
 
-## تهدید و کنترل لازم
+متن چت/تیکت/برند به صورت متن render می‌شود؛ HTML/CSS دلخواه نیست. تخته color/width/points محدود و author سروری دارد. moderation متن مخفی‌شده را از snapshot حذف می‌کند. snapshotها no-store هستند؛ revoke دسترسی باعث حذف projection خصوصی از UI و قطع رسانه می‌شود.
 
-| تهدید              | کنترل                                                                               |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| نشت میان مدارس     | scope از نشست، composite FK، query scoped، RLS و تست منفی                           |
-| سرقت نشست          | HttpOnly/Secure/SameSite cookie، rotation، revoke، MFA مدیران                       |
-| CSRF و origin جعلی | بررسی Origin برای mutation، سیاست CSRF کتابخانهٔ auth، allowlist دامنه              |
-| XSS                | متن چت بدون HTML، encode خروجی، CSP مبتنی بر nonce، عدم ذخیره token در localStorage |
-| جعل مجوز رسانه     | grants سمت سرور، TTL، ban/reconnect check، امضای webhook                            |
-| حمله به چت/تخته    | limit payload/rate، ACL کانال، سقف سند و snapshot، moderation                       |
-| فایل مخرب          | سقف حجم/type، اسکن بدافزار، private bucket، URL امضاشده                             |
-| ضبط غیرمجاز        | ACL سمت سرور، اعلان ضبط، tenant ownership و audit، private storage                  |
-| مصرف منابع         | quota سازمان/اتاق، rate limit توزیع‌شده، admission control برای Egress              |
-| زنجیره تأمین       | lockfile، CI، Dependabot، audit و update بررسی‌شده                                  |
+## دعوت
 
-headerهای nosniff، frame denial، referrer و device permissions در نسخهٔ فعلی فعال‌اند. CSP و HSTS production بعد از تعیین HTTPS، دامنه‌های SFU، WebSocket و nonce پیاده می‌شوند؛ policy ناقص و شکننده را به نام امنیت فعال نمی‌کنیم.
+دعوت ایمیلی اثبات ایمیل معتبر می‌خواهد و hash/expiry/لغو دارد. لینک اتاق قابلیت اشتراکی است؛ مالکیت ایمیل را اثبات نمی‌کند و فقط attendee همان اتاق می‌سازد. token تصادفی ۳۲ بایتی، hash در DB، expiry و maxUses محدود دارد. fragment به URL سرور نمی‌رود. redemption با context hash تنها لینک مورد نظر را پیدا می‌کند، سپس org از رکورد تعیین می‌شود. عضویت تعلیق‌شده/ban، اتاق بسته، سقف/expiry و race تراکنشی کنترل می‌شوند. لینک را عمومی منتشر نکنید؛ لغو لینک مجوز قبلی عضو را حذف نمی‌کند و برای آن ban لازم است.
 
-## رمزنگاری و ضبط
+## رسانه و revocation
 
-HTTPS/WSS و DTLS-SRTP در انتقال، encryption at rest در storage. E2EE واقعی نیازمند توزیع و مدیریت کلید و پشتیبانی client است و در این نسخه وجود ندارد. recorder باید محتوا را decrypt کند تا ضبط کند؛ دادن کلید به recorder آن را به endpoint مورد اعتماد تبدیل می‌کند. حالت خصوصی E2EE در طراحی اولیه ضبط سمت سرور را غیرفعال می‌کند. UI باید این تفاوت را واضح نشان دهد.
+توکن تنها server-side پس از نشست/role/room تازه صادر می‌شود: همان org و room، TTL حداکثر ۵ دقیقه یا باقیماندهٔ grant، sessionId امضاشده، بدون roomAdmin/data publish/metadata update. منابع صوت/دوربین/صفحه allowlist هستند. خود کاربر باید دستگاه را فعال کند؛ remote unmute سرور خاموش است.
 
-## محدودیت revocation در LiveKit self-hosted
+gateway همیشه‌روشن Origin، امضا/expiry، sessionId و مجوز تازه را روی هر اتصال و reconnect بررسی می‌کند. پنج‌ثانیه یک‌بار دسترسی اتصال برقرار خوانده می‌شود؛ لغو/ban/تعلیق/پایان یا نبود DB به حذف participant در SFU و بستن signaling منجر می‌شود. به‌دلیل timeout DB/API و خطای شبکه قطع آنی تضمین نمی‌شود. اگر API کنترل SFU در دسترس نباشد، بستن signaling به‌تنهایی تضمین توقف فوری رسانه نیست؛ آن وضعیت باید در پایش عملیاتی هشدار شود. publisher با grant منقضی fresh join می‌خواهد؛ read-only خودکار به publisher تبدیل نمی‌شود.
 
-طبق [مستندات token](https://docs.livekit.io/frontends/reference/tokens-grants/)، حذف participant یا تغییر permission در self-hosted توکن قبلی را باطل نمی‌کند و SDK توکن reconnect تازه هم دریافت می‌کند. TTL کوتاه به‌تنهایی اخراج فوری و قطعی را تضمین نمی‌کند. قبل از production خودمیزبان باید دروازهٔ signaling با بررسی امضا، نشست، ban و cutoff توکن طراحی و آزموده شود، یا سرویس با revocation سمت SFU انتخاب شود. webhook حذف پس از ورود به‌تنهایی جلوگیری فوری از اتصال نیست. این دروازه در پایهٔ فعلی وجود ندارد؛ ban/reconnect تا آزمون واقعی قابل ادعا نیست.
+**پورت/API signaling خام SFU هرگز عمومی نشود.** مسیر مرورگر باید الزاماً gateway باشد؛ firewall/TLS proxy و loopback/private bind بخشی از مدل امنیت‌اند. پورت‌های ICE/TURN رسانه عمومی و رمزنگاری‌شده‌اند و با API کنترل متفاوت‌اند. gateway حداکثر ۲۰۰ signaling connection با محدودیت صف/backpressure دارد؛ این عدد ظرفیت تجاری SFU نیست. JWT/query signaling در proxy، log و telemetry ذخیره نشوند.
 
-## دادهٔ دانش‌آموز و audit
+SDK و دستگاه‌ها هنگام خروج/لغو/قطع نهایی متوقف و detached می‌شوند؛ نتیجهٔ دیرهنگام permission/connect نیز باید پاک شود. share screen فقط با gesture و پشتیبانی مرورگر. تحلیل سطح صوت محلی در regression بدون ذخیره/ارسال نمونه است؛ آن را recording ننامید.
 
-کمینه‌سازی داده، سیاست نگهداری چت/ضبط، export و حذف حساب، حذف backup طبق برنامه، بدون محتوای درس در telemetry. audit شامل actor، سازمان، اتاق، action، target، reason، correlationId و timestamp است. token، secret و محتوای خصوصی در log نباشد. webhook recording با امضای معتبر و deduplication در transaction پردازش شود.
+## داده و خودمیزبانی
 
-## دریافت محلی دستگاه‌ها
+secret، env، private config، ضبط، دانش‌آموز واقعی، screenshot/trace/session آزمون وارد Git یا Vercel upload نمی‌شوند. bootstrap/schema/runtime رمز جدا دارند. PG در compose فقط شبکهٔ داخلی و loopback میزبان دارد؛ پورت raw را عمومی نکنید. وب/gateway فقط loopback پشت TLS. SMTP 465/587 با TLS/certificate verification؛ TLS verification را برای رفع خطا خاموش نکنید.
 
-`LocalCapture` فقط پس از کلیک کاربر `getUserMedia` را فراخوانی می‌کند؛ مجوز میکروفون و دوربین مستقل‌اند. خاموش‌کردن دستگاه به‌جای پنهان‌کردن UI، همهٔ trackهای آن را stop می‌کند. permission دیرهنگام پس از لغو یا خروج، بلافاصله بسته می‌شود. unmount و pagehide منابع را آزاد می‌کنند و قطع سخت‌افزار وضعیت را اصلاح می‌کند. Web Audio فقط سطح صدا را برای جلوهٔ محدود محاسبه می‌کند؛ هیچ اتصال به خروجی بلندگو، ضبط، ارسال، ذخیره یا telemetry صدا وجود ندارد. پاک‌سازی، خطای مجوز و خروج با دستگاه مصنوعی در آزمون‌ها پوشش داده شده‌اند. مجوز محلی دستگاه به معنی مجوز انتشار رسانه در اتاق نیست؛ کنترل publication در سرور همچنان لازم است.
+domestic allowlist اپراتور دارد و Cloud شناخته‌شده/میزبان تأییدنشده را رد می‌کند؛ تضمین جغرافیا یا دسترسی ISP نیست. TLS، DNS، image، package مورد نیاز و backup باید پیش از قطعی آماده باشند. تنها یک سایت مرجع نوشتن؛ backup/restore خصوصی و انتقال با کنترل صحت. رمزهای migration به وب داده نشوند و volume موجود خودکار حذف نشود.
 
-## وضعیت عمومی و پیش‌نویس پشتیبانی
+## معیارهای باز production
 
-`/api/status` تنها allowlist اطلاعات عمومی وب را می‌دهد؛ credential، نام کامل متغیرهای محیطی، IP خصوصی، دادهٔ سازمان و مصرف کاربران ندارد. این endpoint جای احراز هویت مرکز نظارت عملیاتی نیست. ظرفیت نامعلوم null است و هویت میزبان کلاس تا اتصال repository همچنان نمونه باقی می‌ماند.
-
-فرم پشتیبانی هیچ درخواست ثبت سروری یا ارسال پیام ندارد. ذخیرهٔ متن در مرورگر فقط با اقدام کاربر، با schema نسخه‌دار و سقف طول انجام می‌شود؛ حذف و دانلود قابل دسترس است. UI دربارهٔ دستگاه مشترک و پرهیز از اطلاعات حساس اطلاع می‌دهد. پیش از ثبت تیکت سروری، session، tenant scope، idempotency، origin/rate limit و persistence خصوصی لازم‌اند.
-
-## هویت و سازمان — کنترل‌های پیاده‌شده
-
-Better Auth، ایمیل تأییدشده، نشست DB، cookie HttpOnly/SameSite/Secure روی HTTPS و MFA با proof همان نشست پیاده و روی PostgreSQL آزموده شدند. cookie cache فعال نیست؛ خروج/revoke/reset نشست‌های مربوط را باطل می‌کنند. کلید TOTP و recovery فقط پس از اقدام کاربر در صفحهٔ امنیت نمایش داده می‌شوند و در localStorage یا telemetry ذخیره نمی‌شوند. ورود دستی TOTP فعلاً جای QR است.
-
-Runtime غیرمالک و بدون bypass/superuser است؛ role ناامن رد می‌شود. جدول‌های سازمانی FORCE RLS و context تراکنشی دارند. org/role از session و membership تازه تعیین می‌شود. تعلیق/تغییر نقش روی درخواست بعدی اثر می‌کند؛ publication رسانهٔ برقرار هنوز وجود ندارد و revocation SFU حل نشده است. audit از app UPDATE/DELETE ندارد. invitation فقط hash نگه می‌دارد و token fragment به سرور در URL ارسال نمی‌شود.
-
-API workspace Origin معتبر، JSON strict، payload حداکثر 8KB و 60 درخواست در دقیقه به‌ازای user با counter مشترک DB دارد. کتابخانه auth از rate limit پایگاه داده استفاده می‌کند؛ آستانه‌های پیش‌فرض آن باید در شبکهٔ واقعی و NAT مدرسه سنجیده شوند. logger کتابخانه خاموش است؛ endpointها خطای خام SQL یا credential برنمی‌گردانند. کلاس، چت، تخته، فایل، تیکت و ضبط هنوز تست tenant عملیاتی ندارند؛ این برش جای آزمون نفوذ مستقل production نیست.
-
-## قبل از production
-
-ورودی production دیگر نمونه را جایگزین حساب نمی‌کند. شش جدول سازمان/عضویت/دعوت/audit/اتاق/تخصیص با FORCE RLS محافظت می‌شوند. اعتبارنامهٔ مالک Neon در runtime وب قرار ندارد. پیش‌فرض signup و recovery در نبود ارسال ایمیل در سرور نیز 503 می‌دهند. استثنای موقت با درخواست مالک: AUTH_EMAIL_VERIFICATION_REQUIRED=false ثبت‌نام/ورود با رمز را فعال می‌کند، emailVerified همچنان false و app.verified_email تهی می‌ماند؛ پذیرش دعوت برای حساب تأییدنشده رد می‌شود. recovery بدون فرستنده همچنان 503 است. MFA و RLS باقی‌اند؛ [ADR 0005](adr/0005-temporary-password-signup.md) مسیر پایان این حالت را ثبت می‌کند. کلیدهای production با اجازهٔ صریح کاربر ساخته و فقط در تنظیمات محرمانه نگهداری شدند. نمونهٔ UI با flag توسعه در Vercel قابل فعال‌سازی نیست.
-
-صندوق توسعه فقط با flag صریح، NODE_ENV=development، loopback و DB آزمون فعال است؛ روی Vercel و production غیرفعال است. signup محلی فقط ایمیل `.test` می‌پذیرد؛ tokenها در حافظهٔ محلی با TTL محدود هستند. این محیط باید فقط روی دستگاه توسعه و با دادهٔ مصنوعی استفاده شود. keys fixture برای HTTPS عمومی رد می‌شوند؛ request logging توسعه خاموش است تا URLهای verification/recovery چاپ نشوند.
-
-احراز هویت واقعی و MFA، negative tests بین دو tenant، access revocation، origin/rate limits، TLS و TURN، CSP، اسکن فایل، backup و restore عملی، load test رسانه و ضبط، سیاست حریم خصوصی و بررسی نفوذ مستقل لازم‌اند.
-
-## خودمیزبانی و انتقال محیط
-
-credential نقش migration، bootstrap و runtime مستقل‌اند؛ web image فقط runtime را دریافت می‌کند. private استقرار از Git، Docker context و upload ورسل کنار گذاشته می‌شود. PostgreSQL در Compose مستقل port عمومی ندارد؛ وب فقط loopback برای HTTPS proxy منتشر می‌شود. bootstrap فقط volume تازهٔ اختصاصی را آماده می‌کند؛ volume موجود بدون بررسی اپراتور حذف یا بازنویسی نمی‌شود. یک سایت مرجع نوشتن مانع split-brain است؛ backup/restore و تغییر origin/کلید نشست باید آزموده شوند. مستقل‌شدن سرویس‌ها کنترل ban/reconnect رسانه را خودکار حل نمی‌کند. [ADR 0006](adr/0006-portable-self-hosting.md).
-
-## سیاست جاری حساب — 2026-10-14
-
-با درخواست مالک، تأیید دومرحله‌ای مبتنی بر برنامهٔ کدساز از جریان حساب حذف شد. ثبت‌نام، ورود، ساخت مجموعه و مدیریت با رمز عبور انجام می‌شوند؛ صفحه و endpoint کدساز دیگر فعال نیستند. migration 0005 وضعیت و secretهای قدیمی کدساز را پاک می‌کند، بدون حذف حساب یا نشست. عضویت/نقش معتبر، RLS، Origin و محدودیت ایمیل برقرارند؛ break-glass پلتفرم همچنان سیاست مستقل MFA دارد. این تصمیم الزام قبلی عمومی مدیران در توضیحات تاریخی را جایگزین می‌کند: [ADR 0007](adr/0007-password-only-authentication.md).
+آزمون مستقل نفوذ، CSP سازگار با WebRTC و scriptهای موجود، TLS/TURN از چند ISP، load/rate/NAT test، backup/restore، log/alert مناسب gateway، سیاست نگهداری/حذف داده و ضبط خصوصی لازم‌اند. ضبط Egress و storage فعلاً پیاده نشده؛ هیچ موفقیت ضبط قبل از webhook معتبر نمایش داده نشود. تست‌های فعلی دو tenant و مرورگر جای این پذیرش‌ها نیستند.

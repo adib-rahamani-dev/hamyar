@@ -15,8 +15,9 @@ export async function assertRuntimeRole(pool: Pool) {
     throw new Error("IDENTITY_DB_ROLE_UNSAFE");
   const protectedTables = (
     await pool.query(
-      "SELECT count(*)::integer AS count FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('organization','membership','invitation','audit_event','meeting_room','room_assignment') AND c.relrowsecurity AND c.relforcerowsecurity",
+      "SELECT count(*)::integer AS count FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('organization','membership','invitation','audit_event','meeting_room','room_assignment','classroom_message','classroom_board','classroom_presence','classroom_link','organization_brand','support_ticket','support_reply') AND c.relrowsecurity AND c.relforcerowsecurity",
     )
   ).rows[0];
-  if (protectedTables.count !== 6) throw new Error("IDENTITY_SCHEMA_NOT_READY");
+  if (protectedTables.count !== 13)
+    throw new Error("IDENTITY_SCHEMA_NOT_READY");
 }

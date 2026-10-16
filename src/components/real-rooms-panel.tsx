@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Video, Plus } from "lucide-react";
+import Link from "next/link";
 type Room = {
   id: string;
   title: string;
@@ -84,8 +85,8 @@ export function RealRoomsPanel({
         <Video size={24} className="accent-text" />
       </div>
       <p className="section-note">
-        اتاق‌های همین مجموعه را مدیریت کنید. اتصال رسانه هنوز فعال نشده است؛
-        امکان ورود تا تکمیل سرویس رسانه ارائه نمی‌شود.
+        وارد اتاق شوید؛ جلسه را شروع کنید و از گفت‌وگو و تختهٔ مشترک استفاده
+        کنید.
       </p>
       {manager && (
         <form className="ticket-form" onSubmit={create}>
@@ -131,6 +132,9 @@ export function RealRoomsPanel({
                 <strong>{room.title}</strong>
                 <span>{states[room.state]}</span>
               </div>
+              <Link className="button secondary" href={`/rooms/${room.id}`}>
+                ورود به اتاق
+              </Link>
             </article>
           ))}
         </div>

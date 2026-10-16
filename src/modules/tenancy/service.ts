@@ -110,6 +110,14 @@ export function createTenancy(pool: Pool, auth: Identity) {
   }
   return {
     actor,
+    /** Identity-only transaction: no tenant is granted. Used for opaque room-link redemption. */
+    async inIdentity<T>(
+      headers: Headers,
+      run: (c: PoolClient, who: Actor) => Promise<T>,
+    ) {
+      const who = await actor(headers);
+      return transaction(who, (c) => run(c, who));
+    },
     async inOrganization<T>(
       headers: Headers,
       manage: boolean,

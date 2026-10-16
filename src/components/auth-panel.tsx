@@ -1,11 +1,21 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
 import { authClient } from "@/modules/identity/client";
 import { useHydrated } from "./use-hydrated";
 
 type Mode = "sign-in" | "sign-up" | "reset" | "new-password";
+function subscribeInvite(update: () => void) {
+  window.addEventListener("hashchange", update);
+  return () => window.removeEventListener("hashchange", update);
+}
+function inviteFragment() {
+  const token = new URLSearchParams(window.location.hash.slice(1)).get(
+    "room-invite",
+  );
+  return token && /^[\w-]{43}$/.test(token) ? `#room-invite=${token}` : "";
+}
 const titles: Record<Mode, string> = {
   "sign-in": "خوش آمدید",
   "sign-up": "شروع یک مسیر تازه",
@@ -30,6 +40,19 @@ export function AuthPanel({
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const hydrated = useHydrated();
+  const roomInvite = useSyncExternalStore(
+    subscribeInvite,
+    inviteFragment,
+    () => "",
+  );
+  function destination() {
+    const token = new URLSearchParams(window.location.hash.slice(1)).get(
+      "room-invite",
+    );
+    return token && /^[\w-]{43}$/.test(token)
+      ? `/join#token=${token}`
+      : "/workspace";
+  }
   const blocked =
     !configured ||
     ((mode === "reset" || (mode === "sign-up" && emailVerificationRequired)) &&
@@ -71,9 +94,9 @@ export function AuthPanel({
         return;
       }
       if (mode === "sign-in") {
-        window.location.assign("/workspace");
+        window.location.assign(destination());
       } else if (mode === "sign-up") {
-        if (!emailVerificationRequired) window.location.assign("/workspace");
+        if (!emailVerificationRequired) window.location.assign(destination());
         else
           setNotice("حساب ساخته شد. برای ورود، لینک تأیید ایمیل را باز کنید.");
       } else if (mode === "reset")
@@ -121,8 +144,9 @@ export function AuthPanel({
       )}
       {configured && mode === "sign-up" && !emailVerificationRequired && (
         <p className="section-note">
-          فعلاً بدون تأیید ایمیل حساب بسازید. بازیابی رمز ایمیلی و پذیرش دعوت با
-          ایمیل تأییدنشده در دسترس نیستند؛ رمزتان را نگه دارید.
+          فعلاً بدون تأیید ایمیل حساب بسازید. بازیابی رمز ایمیلی و پذیرش دعوت
+          ایمیلی مجموعه برای حساب تأییدنشده در دسترس نیستند؛ رمزتان را نگه
+          دارید.
         </p>
       )}
       <form className="ticket-form" onSubmit={submit}>
@@ -198,11 +222,11 @@ export function AuthPanel({
       <div className="auth-links">
         {mode === "sign-in" ? (
           <>
-            <Link href="/account/sign-up">ساخت حساب جدید</Link>
+            <Link href={`/account/sign-up${roomInvite}`}>ساخت حساب جدید</Link>
             <Link href="/account/reset">رمز را فراموش کردم</Link>
           </>
         ) : (
-          <Link href="/account/sign-in">بازگشت به ورود</Link>
+          <Link href={`/account/sign-in${roomInvite}`}>بازگشت به ورود</Link>
         )}
       </div>
     </section>

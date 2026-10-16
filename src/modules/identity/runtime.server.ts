@@ -5,6 +5,9 @@ import { identityConfigSchema } from "./config";
 import { assertRuntimeRole } from "./database-role";
 import { developmentMailboxEnabled } from "./dev-mail-config";
 import { captureDevelopmentMail } from "./dev-mailbox.server";
+import { assertDomesticDependencies } from "../operations/deployment-mode";
+import { mailConfigured } from "./mail-config";
+import { sendSmtpMail } from "./smtp.server";
 
 let runtime:
   | {
@@ -15,6 +18,7 @@ let runtime:
   | undefined;
 export function getIdentity() {
   if (runtime) return runtime;
+  assertDomesticDependencies(process.env);
   const config = identityConfigSchema.safeParse(process.env);
   if (!config.success) throw new Error("IDENTITY_NOT_CONFIGURED");
   const pool = new Pool({
@@ -30,12 +34,21 @@ export function getIdentity() {
       config.data.AUTH_EMAIL_VERIFICATION_REQUIRED !== "false",
     localMailbox: developmentMailboxEnabled(process.env),
     emailConfigured:
-      developmentMailboxEnabled(process.env) ||
-      (!!process.env.RESEND_API_KEY && !!process.env.AUTH_EMAIL_FROM),
+      developmentMailboxEnabled(process.env) || mailConfigured(process.env),
     secure: new URL(config.data.BETTER_AUTH_URL).protocol === "https:",
     sendMail: sendAuthMail,
   });
-  runtime = { pool, auth, assertReady: () => assertRuntimeRole(pool) };
+  // Verify structural readiness once per process; membership and room ACL stay fresh per action.
+  let ready: Promise<void> | undefined;
+  runtime = {
+    pool,
+    auth,
+    assertReady: () =>
+      (ready ??= assertRuntimeRole(pool).catch((error) => {
+        ready = undefined;
+        throw error;
+      })),
+  };
   return runtime;
 }
 
@@ -44,6 +57,9 @@ async function sendAuthMail(mail: AuthMail) {
     captureDevelopmentMail(mail);
     return;
   }
+  if (process.env.AUTH_MAIL_TRANSPORT === "smtp") return sendSmtpMail(mail);
+  if (!mailConfigured(process.env))
+    throw new Error("AUTH_EMAIL_NOT_CONFIGURED");
   if (!process.env.RESEND_API_KEY || !process.env.AUTH_EMAIL_FROM)
     throw new Error("AUTH_EMAIL_NOT_CONFIGURED");
   const response = await fetch("https://api.resend.com/emails", {

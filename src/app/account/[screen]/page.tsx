@@ -6,6 +6,7 @@ import {
   emailVerificationRequired,
 } from "@/modules/identity/config";
 import { developmentMailboxEnabled } from "@/modules/identity/dev-mail-config";
+import { mailConfigured } from "@/modules/identity/mail-config";
 const screens = ["sign-in", "sign-up", "reset", "new-password"] as const;
 export const dynamic = "force-dynamic";
 export default async function AccountPage({
@@ -27,8 +28,7 @@ export default async function AccountPage({
         emailVerificationRequired={emailVerificationRequired(process.env)}
         localMailbox={developmentMailboxEnabled(process.env)}
         emailConfigured={
-          developmentMailboxEnabled(process.env) ||
-          (!!process.env.RESEND_API_KEY && !!process.env.AUTH_EMAIL_FROM)
+          developmentMailboxEnabled(process.env) || mailConfigured(process.env)
         }
       />
     </AccountFrame>

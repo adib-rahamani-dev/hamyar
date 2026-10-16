@@ -3,7 +3,13 @@ import { AudioLines, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { AppearanceToggle } from "./appearance-toggle";
 import "@/app/account.css";
-export function AccountFrame({ children }: { children: React.ReactNode }) {
+export function AccountFrame({
+  children,
+  navigation = false,
+}: {
+  children: React.ReactNode;
+  navigation?: boolean;
+}) {
   return (
     <div className="management-shell account-shell">
       <a className="skip-link" href="#account-content">
@@ -21,6 +27,15 @@ export function AccountFrame({ children }: { children: React.ReactNode }) {
           <ThemeToggle />
         </div>
       </header>
+      {navigation && (
+        <nav className="workspace-navigation" aria-label="پنل همیار">
+          <Link href="/workspace">مجموعه‌ها و اتاق‌ها</Link>
+          <Link href="/supervisor">مرکز نظارت</Link>
+          <Link href="/support">پشتیبانی</Link>
+          <Link href="/settings">ظاهر مجموعه</Link>
+          <Link href="/account/security">امنیت حساب</Link>
+        </nav>
+      )}
       <main id="account-content" className="account-content">
         {children}
       </main>

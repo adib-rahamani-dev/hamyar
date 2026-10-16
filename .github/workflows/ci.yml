@@ -37,6 +37,7 @@ jobs:
           PGPASSWORD: ci_local_only
         run: psql -h 127.0.0.1 -U hamyar_schema -d hamyar_identity_test -c "CREATE ROLE hamyar_app LOGIN PASSWORD 'ci_app_only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS"
       - run: npm run check
+      - run: npm run build:gateway
       - run: npm run test:integration
       - run: npm run build
       - run: npx playwright install --with-deps chromium
@@ -46,3 +47,5 @@ jobs:
       - run: npm run test:public:e2e
       - run: npm run build:self-host
       - run: npm run test:standalone:e2e
+        env:
+          HAMYAR_TEST_DEPLOYMENT_MODE: domestic

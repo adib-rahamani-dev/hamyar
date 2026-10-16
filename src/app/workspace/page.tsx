@@ -27,7 +27,7 @@ export default async function WorkspacePage() {
   });
   if (!current) redirect("/account/sign-in");
   return (
-    <AccountFrame>
+    <AccountFrame navigation>
       <WorkspacePanel name={current.user.name} userId={current.user.id} />
     </AccountFrame>
   );

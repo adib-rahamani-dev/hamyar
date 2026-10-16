@@ -2,6 +2,13 @@ import { getIdentity } from "@/modules/identity/runtime.server";
 import { createTenancy, DomainError } from "@/modules/tenancy/service";
 import { ZodError } from "zod";
 import { createRoomRepository } from "@/modules/rooms/repository";
+import { createClassroom } from "@/modules/classroom/service";
+import { createSupport } from "@/modules/support/service";
+import { createOrganizationSettings } from "@/modules/organization-settings/service";
+import { mediaConfig } from "@/modules/media/config";
+import { issueRoomToken } from "@/modules/media/issue-token.server";
+import { allowedMediaSources } from "@/modules/rooms/policy";
+import { createHash } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 async function handle(
@@ -19,6 +26,9 @@ async function handle(
       throw new DomainError("ORIGIN_DENIED");
     const service = createTenancy(pool, auth);
     const rooms = createRoomRepository(pool, auth);
+    const classroom = createClassroom(pool, auth);
+    const support = createSupport(pool, auth);
+    const settings = createOrganizationSettings(pool, auth);
     const who = await service.actor(request.headers);
     const limited = await pool.query(
       "INSERT INTO workspace_rate_limit(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET count=CASE WHEN workspace_rate_limit.started_at<=now()-interval '1 minute' THEN 1 ELSE workspace_rate_limit.count+1 END,started_at=CASE WHEN workspace_rate_limit.started_at<=now()-interval '1 minute' THEN now() ELSE workspace_rate_limit.started_at END WHERE workspace_rate_limit.count<60 OR workspace_rate_limit.started_at<=now()-interval '1 minute' RETURNING user_id",
@@ -52,7 +62,70 @@ async function handle(
     }
     let result: unknown;
     const path = action.join("/");
-    if (request.method === "GET" && path === "rooms")
+    if (request.method === "POST" && path === "room-link")
+      result = await classroom.redeem(request.headers, body);
+    else if (path === "brand" && request.method === "GET")
+      result = await settings.read(request.headers);
+    else if (path === "brand" && request.method === "PATCH")
+      result = await settings.update(request.headers, body);
+    else if (path === "tickets" && request.method === "GET")
+      result = await support.list(request.headers);
+    else if (path === "tickets" && request.method === "POST")
+      result = await support.create(request.headers, body);
+    else if (
+      action[0] === "tickets" &&
+      action.length === 2 &&
+      request.method === "POST"
+    )
+      result = await support.reply(request.headers, action[1]!, body);
+    else if (
+      action[0] === "classroom" &&
+      action.length >= 2 &&
+      action.length <= 3
+    ) {
+      const id = action[1]!;
+      const command = action[2] ?? "snapshot";
+      if (command === "snapshot" && request.method === "GET")
+        result = await classroom.snapshot(request.headers, id);
+      else if (command === "links" && request.method === "GET")
+        result = await classroom.links(request.headers, id);
+      else if (request.method === "POST") {
+        if (command === "join-media") {
+          const context = await rooms.context(request.headers, id);
+          const config = mediaConfig(process.env);
+          if (!config) throw new DomainError("MEDIA_NOT_CONFIGURED", 503);
+          const current = await auth.api.getSession({
+            headers: request.headers,
+          });
+          if (!current || current.session.id !== who.sessionId)
+            throw new DomainError("SIGN_IN_REQUIRED", 401);
+          result = {
+            url: config.LIVEKIT_URL,
+            token: await issueRoomToken(context, {
+              sessionId: who.sessionId,
+              name: current.user.name,
+            }),
+            sources: allowedMediaSources(context),
+          };
+        } else if (command === "message")
+          result = await classroom.message(request.headers, id, body);
+        else if (command === "hide")
+          result = await classroom.hideMessage(request.headers, id, body);
+        else if (command === "board")
+          result = await classroom.board(request.headers, id, body);
+        else if (command === "presence")
+          result = await classroom.presence(request.headers, id, body);
+        else if (command === "control")
+          result = await classroom.control(request.headers, id, body);
+        else if (command === "state")
+          result = await classroom.state(request.headers, id, body);
+        else if (command === "links")
+          result = await classroom.createLink(request.headers, id, body);
+        else if (command === "revoke-link")
+          result = await classroom.revokeLink(request.headers, id, body);
+        else throw new DomainError("NOT_FOUND", 404);
+      } else throw new DomainError("NOT_FOUND", 404);
+    } else if (request.method === "GET" && path === "rooms")
       result = await rooms.list(request.headers);
     else if (request.method === "POST" && path === "rooms")
       result = await rooms.create(request.headers, body);
@@ -108,6 +181,25 @@ async function handle(
         throw new DomainError("INVALID_REQUEST", 400);
       result = await service.acceptInvite(request.headers, body.token);
     } else throw new DomainError("NOT_FOUND", 404);
+    // Private conditional snapshots avoid resending a full unchanged board on every poll.
+    // Authorization and DB projection above always run first, even for a matching ETag.
+    if (
+      request.method === "GET" &&
+      action[0] === "classroom" &&
+      action.length === 2
+    ) {
+      const payload = JSON.stringify(result),
+        etag = `"${createHash("sha256").update(payload).digest("hex")}"`;
+      const headers = {
+        "Cache-Control": "private, no-store",
+        ETag: etag,
+        Vary: "Cookie",
+        "Content-Type": "application/json",
+      };
+      return request.headers.get("if-none-match") === etag
+        ? new Response(null, { status: 304, headers })
+        : new Response(payload, { headers });
+    }
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const code =

@@ -12,6 +12,15 @@ FROM dependencies AS build
 COPY . .
 ENV HAMYAR_STANDALONE=1
 RUN npm run build
+RUN npm run build:gateway
+
+FROM dependencies AS gateway
+RUN npm prune --omit=dev
+COPY --from=build --chown=node:node /app/.gateway ./.gateway
+COPY --chown=node:node scripts/media-gateway.mjs ./scripts/media-gateway.mjs
+USER node
+EXPOSE 8090
+CMD ["node", "scripts/media-gateway.mjs"]
 
 FROM dependencies AS migration
 RUN npm prune --omit=dev

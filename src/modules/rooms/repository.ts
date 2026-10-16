@@ -37,7 +37,10 @@ export function createRoomRepository(pool: Pool, auth: Identity) {
         ),
         rooms: (
           await c.query(
-            "SELECT id,title,state,locked FROM meeting_room WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 100",
+            `SELECT r.id,r.title,r.state,r.locked,
+              (SELECT count(*)::integer FROM classroom_presence p JOIN membership m ON m.organization_id=p.organization_id AND m.user_id=p.user_id AND m.status='active' WHERE p.organization_id=r.organization_id AND p.room_id=r.id AND p.last_seen>now()-interval '45 seconds') AS present,
+              (SELECT string_agg(u.name,'، ') FROM room_assignment a JOIN membership m ON m.organization_id=a.organization_id AND m.id=a.membership_id JOIN auth_user u ON u.id=m.user_id WHERE a.organization_id=r.organization_id AND a.room_id=r.id AND a.role='host' AND NOT a.banned AND m.status='active') AS hosts
+              FROM meeting_room r WHERE r.organization_id=$1 ORDER BY r.created_at DESC LIMIT 100`,
             [who.organizationId],
           )
         ).rows as {
@@ -45,7 +48,17 @@ export function createRoomRepository(pool: Pool, auth: Identity) {
           title: string;
           state: "scheduled" | "open" | "ended";
           locked: boolean;
+          present: number;
+          hosts: string | null;
         }[],
+        openTickets: Number(
+          (
+            await c.query(
+              "SELECT count(*)::integer AS count FROM support_ticket WHERE organization_id=$1 AND status<>'closed'",
+              [who.organizationId],
+            )
+          ).rows[0].count,
+        ),
       }));
     },
     async list(headers: Headers) {
@@ -100,7 +113,7 @@ export function createRoomRepository(pool: Pool, auth: Identity) {
         const assignment =
           (
             await c.query(
-              "SELECT a.role,a.admitted,a.banned FROM room_assignment a JOIN membership m ON m.organization_id=a.organization_id AND m.id=a.membership_id WHERE a.organization_id=$1 AND a.room_id=$2 AND m.user_id=$3 AND m.status='active'",
+              "SELECT a.role,a.admitted,a.banned,a.audio_allowed,a.camera_allowed,a.screen_allowed,a.grant_expires_at FROM room_assignment a JOIN membership m ON m.organization_id=a.organization_id AND m.id=a.membership_id WHERE a.organization_id=$1 AND a.room_id=$2 AND m.user_id=$3 AND m.status='active'",
               [who.organizationId, id, who.userId],
             )
           ).rows[0] ?? null;
@@ -119,7 +132,14 @@ export function createRoomRepository(pool: Pool, auth: Identity) {
             privacy: "standard",
           },
           assignment,
-          mediaApproval: null,
+          mediaApproval: assignment?.grant_expires_at
+            ? {
+                audio: assignment.audio_allowed,
+                camera: assignment.camera_allowed,
+                screen: assignment.screen_allowed,
+                expiresAt: new Date(assignment.grant_expires_at).getTime(),
+              }
+            : null,
         };
         if (!canAccessRoom(context, "join"))
           throw new DomainError("ROOM_ACCESS_DENIED");

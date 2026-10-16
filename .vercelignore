@@ -1,5 +1,6 @@
 .git
 .next
+.gateway
 .vercel
 infra/self-host/private
 .artifacts

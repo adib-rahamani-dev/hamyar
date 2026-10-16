@@ -1,52 +1,65 @@
-# همیار روی سرور خودت، با آمادگی برای قطع اینترنت بین‌المللی
+# اجرای همیار روی سرور خودت؛ حالت عادی و داخلی
 
-ورسل فعلاً محیط آزمایش است. مقصد مستقل می‌تواند سرور خارج یا VPS ایران باشد؛ سرویس Cloud رسانه اجباری نیست. برنامه، حساب‌ها و schema یک سورس دارند. هدف داخلی کامل: وب/API، PostgreSQL، SFU/TURN، Redis، تخته/چت، recorder، فایل‌ها، DNS و مسیر ورود همگی از داخل ایران قابل دسترس باشند.
+یک release، یک schema و دو پروفایل runtime داریم: `HAMYAR_DEPLOYMENT_MODE=normal|domestic`. انتخاب domestic فقط میزبان‌های allowlist را می‌پذیرد؛ داده را منتقل نمی‌کند و آزمون قطع اینترنت را جایگزین نمی‌کند. محصول به حساب Cloud رسانه یا realtime وابسته نیست. ورسل فعلاً وب/API را برای آزمایش اجرا می‌کند و دیتابیس آزمایش Neon است. برای ایران، PostgreSQL خودتان جای آن قرار می‌گیرد.
 
-**وضعیت این برش:** Dockerfile و Compose برای وب، حساب، مدیریت نشست، سازمان و اتاق پایدار اضافه شدند. قالب رسانه و برنامهٔ انتقال آماده‌اند. مرحلهٔ کدساز حساب با ADR 0007 حذف شده و migration 0005 تنظیمات قدیمی را پاک می‌کند. کلاس چندنفره، Egress، storage ضبط، SMTP داخلی، همگام‌سازی دادهٔ دو سایت و failover خودکار هنوز ساخته/آزموده نشده‌اند. این فایل‌ها به معنی استقرار انجام‌شده روی VPS نیستند. [ADR 0006](adr/0006-portable-self-hosting.md).
+[وضعیت جاری](CURRENT_RELEASE.md)، [راهنمای سورس](CODE_GUIDE.fa.md) و [ADR 0008](adr/0008-persisted-classroom-and-owned-media.md) را هم بخوانید. ضبط سروری، فایل خصوصی و failover هنوز ساخته نشده‌اند؛ قالب نصب به معنی نصب/آزمون VPS نیست.
 
-راستی‌آزمایی محلی: `npm run check`، build عادی و build مستقل پاس شدند. Compose با فایل‌های fixture خصوصی و `config --quiet` اعتبارسنجی شد؛ syntax اسکریپت bootstrap نیز بررسی شد. خروجی standalone با PostgreSQL آزمون واقعی روی مرورگر موبایل و دسکتاپ، ثبت‌نام → مدیریت نشست → مجموعه/اتاق → خروج → ورود مجدد را پاس کرد. موتور Docker این دستگاه در دسترس نبود؛ build/اجرای image لینوکس و VPS هنوز آزموده نشده‌اند. CI اجرای standalone را روی Linux تعریف می‌کند؛ این به‌تنهایی آزمون container نیست.
+## چیزهایی که پیش از قطعی باید آماده باشند
 
-برای تکرار آزمون مستقل، متغیرهای `TEST_DATABASE_URL` و `TEST_MIGRATION_DATABASE_URL` باید به DB مستقل با پسوند `_test` اشاره کنند:
+Linux و Docker مناسب معماری مقصد، imageهای همان release، سورس، دامنه/DNS داخلی، TLS معتبر روی گوشی، backup رمزنگاری‌شدهٔ داده و کلیدهای خصوصی. شروع برنامه روی سرور جداشده نباید به npm install، registry، پنل Cloud یا صدور آنلاین گواهی خارجی وابسته باشد. برای نصب اولیه، registry و نصب بسته لازم است؛ image نهایی پس از ساخته‌شدن در startup وابستگی دانلود نمی‌کند.
 
-```bash
-npm run build:self-host
-npm run test:standalone:e2e
-```
+یک مقصد مرجع نوشتن داشته باشید. دو DB مستقل همزمان بدون replication طراحی‌شده ننویسند. انتقال اولیه: توقف نوشتن، backup خصوصی، restore، کنترل تعداد/مالکیت رکورد، RLS و نقش runtime، سپس تغییر مسیر کاربران. این پروژه همگام‌سازی Neon با VPS یا failover خودکار ندارد؛ پس از قطع ممکن است دادهٔ منتقل‌نشده در دسترس نباشد.
 
-## سه محیط و مرز داده
+## ساخت release روی Linux دارای Docker
 
-| محیط         | محل اجرا                                           | کاربرد                                                      |
-| ------------ | -------------------------------------------------- | ----------------------------------------------------------- |
-| تست فعلی     | Vercel + Neon                                      | آزمایش عمومی تا زمان فراهم‌شدن سرور                         |
-| مستقل عادی   | Linux + PostgreSQL و رسانهٔ خودمیزبان              | اجرای اصلی بدون الزام حساب Cloud                            |
-| آمادهٔ داخلی | همان release روی Linux ایران، با داده و فایل آماده | استمرار کار در صورت قطع دسترسی بین‌المللی پس از آزمون واقعی |
-
-تغییر سرور صرفاً با تغییر آدرس URL دیتابیس داده‌ها را جابه‌جا نمی‌کند. یک سایت مرجع برای نوشتن تعیین شود؛ دو DB مستقل همزمان ننویسند. برای انتقال اولیه: freeze نوشتن، backup خصوصی، restore، کنترل تعداد/مالکیت رکوردها و RLS، سپس تغییر مسیر کاربران. replication و RPO/RTO مرحلهٔ بعدند؛ نباید به همگام‌سازی جادویی بعد از قطع دسترسی تکیه کرد. دادهٔ Neon فعلی در این تغییر منتقل نشده است.
-
-## ساخت image وب و migration
-
-روی Linux با Docker، در ریشهٔ repository و وقتی اینترنت یا registry داخلی آماده در دسترس است:
+از ریشهٔ repository، پس از `npm run check` و آزمون DB/مرورگر:
 
 ```bash
 docker build --target runtime -t hamyar-web:RELEASE .
 docker build --target migration -t hamyar-migration:RELEASE .
-docker image save -o hamyar-RELEASE.tar hamyar-web:RELEASE hamyar-migration:RELEASE postgres:17.6-alpine
+docker build --target gateway -t hamyar-gateway:RELEASE .
+# تصاویر زیر را پیش از جداسازی شبکه آماده و بررسی کنید:
+docker pull postgres:17.6-alpine
+docker pull livekit/livekit-server:v1.13.9
 ```
 
-`RELEASE` را با شناسهٔ release مشترک جایگزین کنید. تصویر PostgreSQL باید قبلاً pull شده باشد. release را روی معماری مقصد بسازید؛ خروجی standalone ساخته‌شده در ویندوز را image لینوکس حساب نکنید. Dockerfile نسخهٔ Node مشخص دارد؛ پس از آزمون و اسکن image، digest ثابت نگه دارید. build نیازمند npm/registry است، ولی image نهایی برای شروع نصب وابستگی انجام نمی‌دهد. تصاویر رسانه و proxy نیز جداگانه pin، ذخیره و در ایران آماده شوند.
+`RELEASE` شناسهٔ یک release مشترک است؛ روی معماری مقصد بسازید. نسخهٔ Node در Dockerfile مشخص است؛ image و digest را پس از بررسی نگه دارید. خروجی standalone ساخته‌شده در Windows را image Linux حساب نکنید. موتور Docker این دستگاه در دسترس نیست؛ اجرای container Linux هنوز معیار باز پذیرش است. SFU واقعی loopback با دو مرورگر روی Windows آزموده می‌شود؛ CPU capacity monitor این نسخه در Windows پشتیبانی ندارد و برای ظرفیت‌سنجی استفاده نشده است.
 
-روی مقصد، فایل image و سورس همین release شامل `infra/self-host` را پیشاپیش منتقل و image را با `docker image load -i hamyar-RELEASE.tar` بارگذاری کنید. archive سورس باید بدون `.env`، `.vercel` و فایل‌های خصوصی باشد؛ backup/کلیدها از کانال خصوصی جدا منتقل شوند.
+پس از commit سورس بررسی‌شده و وجود imageها، این دستور هیچ imageای pull نمی‌کند:
 
-## تنظیم برش وب و دیتابیس
+```bash
+npm run release:offline -- hamyar-web:RELEASE hamyar-migration:RELEASE hamyar-gateway:RELEASE postgres:17.6-alpine livekit/livekit-server:v1.13.9
+```
 
-در `infra/self-host` پوشهٔ `private` با دسترسی محدود بسازید. templateها را تنها به فایل‌های تازه کپی کنید و موارد جایگزین را تکمیل کنید:
+خروجی در `.artifacts/offline-COMMIT/` شامل `source.tar`، `images.tar` و manifest با SHA256/شناسهٔ image است. env، private config و backup داخلش نیستند. اگر proxy یا worker جدا دارید image آن‌ها را هم اضافه کنید؛ proxy نصب‌شده روی میزبان و گواهی TLS باید پیشاپیش آماده باشند. checksum را بعد از انتقال کنترل و با `docker image load -i images.tar` بارگذاری کنید.
 
-- `runtime.env.example` → `private/runtime.env`: URL برنامه، کلید نشست و credential فقط نقش runtime.
-- `migration.env.example` → `private/migration.env`: اتصال نقش schema، فقط برای container عملیات.
-- سه فایل `private/bootstrap-password.txt`، `private/schema-password.txt` و `private/app-password.txt`: رمزهای مستقل خصوصی حداقل 32 نویسه؛ آن‌ها را در چت، Git یا آرگومان فرمان قرار ندهید.
-- `.env.example` → `.env` همان پوشه: tag دو image ساخته‌شده؛ این فایل انتخاب image است و رمز ندارد.
+## فایل‌های خصوصی مقصد
 
-رمزهای role باید با URLهای env متناظر یکسان باشند؛ نویسه‌های ویژهٔ رمز داخل URL percent-encode شوند. init فقط روی volume اختصاصی تازه نقش‌ها را ایجاد می‌کند. نقش bootstrap مدیریتی تنها در PostgreSQL است؛ hamyar_schema و hamyar_app هر دو بدون superuser/bypass هستند. migration نقش schema دارد و وب به آن credential دسترسی ندارد. volume موجود را حذف یا bootstrap را به دیتابیس موجود اعمال نکنید.
+در `infra/self-host/private` با دسترسی محدود فایل بسازید. templateها را به فایل تازه کپی و همهٔ placeholderها را جایگزین کنید؛ فایل خصوصی موجود را بازنویسی نکنید:
+
+| template                | مقصد خصوصی                                             | نکته                                             |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| `runtime.env.example`   | `private/runtime.env`                                  | وب، URL معتبر، کلید نشست و role فقط app          |
+| `migration.env.example` | `private/migration.env`                                | schema role فقط عملیات، هرگز در وب               |
+| `gateway.env.example`   | `private/gateway.env`                                  | app role با DB روی loopback:55432، کلید همان SFU |
+| `livekit.yaml.example`  | `private/livekit.yaml`                                 | IP قابل دسترس، کلید خصوصی، STUN/TURN داخلی       |
+| TLS خودتان              | `private/tls/fullchain.pem`, `private/tls/privkey.pem` | پوشش دامنهٔ TURN و رسانه/وب مطابق proxy          |
+| `.env.example`          | `.env` همان پوشه                                       | tag تصویرها، بدون رمز                            |
+
+سه فایل `bootstrap-password.txt`، `schema-password.txt` و `app-password.txt` داخل private بسازید؛ رمز مستقل قوی حداقل ۳۲ نویسه، خارج چت/Git. رمز roleها باید با URL env متناظر یکسان باشد؛ رمز URL را percent-encode کنید. bootstrap تنها روی volume تازه نقش‌ها را می‌سازد؛ volume موجود را برای رفع خطا حذف نکنید. bootstrap مدیریتی فقط در PG است؛ schema/app بدون bypass هستند. مهاجرت خودکار هنگام شروع وب نداریم.
+
+حالت normal می‌تواند روی سرور معمولی هم با همین خدمات خودمیزبان اجرا شود. برای داخلی mode را در runtime.env و gateway.env هر دو domestic کنید؛ allowlist وب شامل سرویس‌های واقعی خودش و allowlist gateway شامل DB خودش باشد. نمونهٔ runtime:
+
+```dotenv
+HAMYAR_DEPLOYMENT_MODE=domestic
+HAMYAR_DOMESTIC_HOSTS=postgres,localhost,127.0.0.1,media.YOUR-DOMAIN,smtp.YOUR-DOMAIN
+AUTH_MAIL_TRANSPORT=disabled
+RESEND_API_KEY=
+```
+
+نام‌های واقعی DB، SMTP و LIVEKIT_URL باید در allowlist باشند؛ URL/دامنهٔ خارجی تأییدنشده پذیرفته نیست. این allowlist اثبات موقعیت IP نیست. اگر SMTP دارید `AUTH_MAIL_TRANSPORT=smtp` و HOST/PORT465یا587/USER/PASSWORD/FROM را تنظیم کنید. TLS و certificate verification روشن‌اند. بدون فرستنده، حالت موقت `AUTH_EMAIL_VERIFICATION_REQUIRED=false` برای ورود با رمز ممکن است؛ بازیابی و دعوت ایمیلی تأییدنشده فعال نمی‌شوند. لینک اتاق همچنان با حساب معتبر قابل استفاده است.
+
+## اجرای وب و دیتابیس
 
 از ریشهٔ repository:
 
@@ -57,28 +70,30 @@ docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml -
 docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml up -d --pull never web
 ```
 
-تولید نباید هنگام شروع خودکار migration بزند. backup معتبر و نتیجهٔ migration را قبل از روشن‌کردن وب بررسی کنید. PostgreSQL هیچ port عمومی ندارد و تنها شبکهٔ خصوصی containerها به آن دسترسی دارد. اگر DB روی ماشین دیگری است TLS و certificate verification الزامی‌اند. healthcheck وب فقط liveness است؛ readiness دیتابیس را با endpoint نشست و مسیر حساب بررسی کنید.
+PG روی شبکهٔ داخلی container و `127.0.0.1:55432` میزبان است؛ loopback برای gateway در host network لازم است. وب روی `127.0.0.1:3000`. هیچ‌کدام نباید raw در اینترنت باز شوند. health endpoint فقط liveness است؛ نشست/ورود و query مجاز readiness عملیاتی را می‌سنجند. schema/app/bootstrap credential مستقل‌اند. DB روی ماشین دیگر TLS معتبر لازم دارد.
 
-وب روی `127.0.0.1:3000` میزبان منتشر می‌شود. reverse proxy روی همان میزبان باید HTTPS معتبر، Host صحیح و headerهای forward قابل اعتماد داشته باشد؛ دسترسی HTTP خام را عمومی نکنید. origin در BETTER_AUTH_URL باید دقیقاً HTTPS آدرس مقصد باشد. تغییر دامنه یا کلید نشست می‌تواند ورود مجدد بخواهد. migration secret را به proxy یا وب ندهید. محدودیت منابع پس از اندازه‌گیری workload تعیین شود؛ این قالب ظرفیت کلاس را تضمین نمی‌کند.
+## اجرای رسانه و دروازه
 
-## رسانهٔ خودمیزبان
+پروفایل `media` برای یک میزبان Linux با host network است. `livekit.yaml` باید API signaling را روی loopback نگه دارد و IP/node/STUN و certificateهای TURN با مقصد واقعی سازگار باشند. `LIVEKIT_URL=wss://media.YOUR-DOMAIN` به gateway پشت TLS اشاره دارد، نه raw SFU. API key/secret در وب، gateway و SFU یکسان و خصوصی است. `HAMYAR_MEDIA_GATEWAY=enabled` تنها وقتی مسیر واقعاً از gateway می‌گذرد.
 
-`LIVEKIT_URL`، `LIVEKIT_API_KEY` و `LIVEKIT_API_SECRET` مربوط به سرور LiveKit خودت می‌شوند. ساخت پروژه در LiveKit Cloud شرط نیست. نصب سرور متن‌باز از [مسیر رسمی self-host](https://docs.livekit.io/transport/self-hosting/deployment/) امکان‌پذیر است.
+```bash
+docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml --profile media up -d --pull never media gateway
+```
 
-قالب `infra/self-host/livekit.yaml.example` از تنظیمات رسمی شروع می‌کند: IP قابل دسترسِ مشخص، Redis خصوصی و STUN داخلی. آن را با IP/دامنه و secret واقعی به فایل خصوصی تبدیل کنید. تنظیم TURN با `external_tls` فقط پشت TLS terminator لایهٔ چهارِ درست کار می‌کند؛ HTTP reverse proxy کافی نیست. برای جای‌گیری signaling و TURN روی 443 مشترک، [generator رسمی VM](https://docs.livekit.io/transport/self-hosting/vm/) نقطهٔ شروع مناسب است؛ فایل‌های خروجی آن secret دارند و باید خارج Git باشند. آن generator دانلود و صدور گواهی خارجی انجام می‌دهد؛ قبل از قطعی آماده و روی محیط داخلی بررسی شود.
+قالب `nginx.conf.example` در http context میزبان قرار می‌گیرد؛ دامنه و certificate را جایگزین کنید و قبل از reload پیکربندی را با nginx بررسی کنید. وب443→3000 و media443→8090. log queryهای signaling خاموش است. پورت **7880**، PostgreSQL و هر API/metrics خام خصوصی بمانند؛ دورزدن gateway مدل ban/reconnect را باطل می‌کند.
 
-نسخهٔ سرور را بعد از آزمون SDK pin کنید. راهنمای بررسی قالب با [config-sample نسخهٔ 1.13.9](https://github.com/livekit/livekit/blob/v1.13.9/config-sample.yaml) خوانده شد؛ نسخهٔ dev فعلی compose ریشه جداست. `--dev` و devkey/secret برای سرور عمومی قابل استفاده نیستند. پورت‌های واقعی و قواعد firewall را بر اساس روش نصب انتخاب کنید؛ signaling/API خام، Redis و metrics نباید عمومی شوند. SFU از UDP/TCP و TURN خودت استفاده می‌کند؛ Vercel واسطهٔ ارسال رسانه نمی‌شود.
+رسانهٔ رمزنگاری‌شده به 7881/TCP و بازهٔ UDP50000–60000 و TURN3478/UDP و5349/TCP نیاز دارد؛ قواعد را مطابق IP و پیکربندی واقعی محدود کنید. TURN با TLS مستقیم certificate محلی دارد. بعضی شبکه‌ها فقط443 را عبور می‌دهند؛ TURN443 مشترک با وب به IP جدا یا TLS/L4 multiplexing درست نیاز دارد و در این template ساخته نشده است. فقط تغییر عدد پورت کافی نیست. Redis برای تک‌گره اجباری نیست؛ چندگره/HA طراحی و آزمون جدا می‌خواهد.
 
-endpoint join هنوز ساخته نشده است. علاوه بر توکن کوتاه‌عمر و مجوزهای محدود، دروازهٔ reconnect باید عضویت/ban/انقضای grant را دوباره بررسی کند. self-host صرفاً با TTL توکن یا webhook اخراج فوری قطعی نمی‌دهد؛ محدودیت و معیار پذیرش در SECURITY و ROADMAP ثبت است. تا آزمون این مسیر، رسانه را آمادهٔ کاربران واقعی اعلام نکنید.
+gateway امضا/Origin/نشست/عضویت/ban/مجوز را روی اتصال و هر پنج ثانیه بررسی می‌کند و در لغو، حذف participant را از SFU می‌خواهد. اگر DB یا API خصوصی قطع باشد وضعیت را در پایش مدیریت کنید؛ قطع رسانهٔ آنی تضمین نیست. از روی health صرف ادعای آماده‌بودن تماس نکنید. سقف۴۰ participant در قالب SFU یک limit اپراتور است و ظرفیت تضمین‌شدهٔ سخت‌افزار نیست.
 
-## ورود، ضبط و فایل‌ها
+## آزمون پذیرش روی مقصد
 
-ورود با رمز و مدیریت نشست روی هر میزبان از DB همان محیط استفاده می‌کند. حالت موقت فعلی `AUTH_EMAIL_VERIFICATION_REQUIRED=false` همچنان ایمیل را تأیید نمی‌کند؛ بازیابی رمز و پذیرش دعوت حساب تأییدنشده محدودند. مسیر ایمیل فعلی به Resend وصل می‌شود؛ adapter فرستندهٔ داخلی/SMTP و آزمون آن کار باقی‌مانده‌اند. در محیط داخلی نهایی هیچ جریان ضروری به OAuth یا سرویس ایمیل خارج وابسته نباشد.
+دو حساب و دو دستگاه از دو شبکهٔ واقعی: ثبت‌نام/ورود، مجموعه و اتاق، چت/تخته، انتشار/دریافت صدا و تصویر، screen share مرورگر پشتیبانی‌شده، TURN، قطع کوتاه و reconnect، لغو مجوز/ban و رد توکن قبلی، پایان جلسه، توقف دستگاه در خروج، برند و تیکت را بررسی کنید. load test باید ناشر، subscriber، bitrate، TURN و ضبط آینده را جدا حساب کند.
 
-ضبط هدف: Egress روی سرور خودت، storage خصوصی S3-compatible داخلی یا مقصد دیسک خصوصی با کنترل دسترسی، webhook معتبر و lifecycle قابل پیگیری. [راهنمای Egress](https://docs.livekit.io/transport/self-hosting/egress/) مرجع است؛ در این تغییر container ضبط یا ضبط موفقی ایجاد نشده است. منابع ضبط، retention، backup و انتقال فایل مستقل از دیتابیس مدیریت شوند.
+برای آزمون استقلال، egress بین‌المللی را در شبکهٔ آزمایش ببندید و containerها/مرورگر را سرد restart کنید. DNS و TLS روی گوشی، SMTP در صورت فعال‌بودن، backup/restore و راه‌اندازی با `--pull never` را کنترل کنید. warm cache کافی نیست؛ هیچ ادعای «آمادهٔ اینترنت ملی» پیش از این تمرین ثبت نشود. ضبط/بازپخش و همگام‌سازی داده هنوز تکمیل نشده‌اند و مانع فروش نسخهٔ کامل با SLA هستند.
 
-## تمرین قطع دسترسی، قبل از نیاز واقعی
+## اجرای محلی از سورس
 
-imageها، release، backup دیتابیس، فایل‌ها، DNS و زنجیرهٔ گواهی داخل ایران آماده باشند. صدور/تمدید گواهی در زمان قطعی و رفتار مرورگر با DNS، trust و OCSP آزموده شود؛ گواهی نامعتبر روی گوشی به رضایت دوربین/میکروفون لطمه می‌زند. دامنه یا مسیر DNS نباید تنها به پنل خارجی قابل دسترس تکیه کند. فونت و assets همیار محلی‌اند؛ CDN خارجی جدید اضافه نشود.
+`npm ci`، تنظیم env محلی با DB غیرمالک، `npm run db:migrate` با اتصال schema مستقل، `npm run dev` برای وب و `npm run build:gateway && npm run start:gateway` برای دروازه. credential نمونه را عمومی نکنید و SFU dev را در اینترنت نگذارید. برای آزمون مستقل خروجی وب: `npm run build:self-host` و `npm run test:standalone:e2e` با DB جداگانهٔ `_test`.
 
-در شبکهٔ آزمون، egress بین‌المللی را مسدود کنید و دو دستگاه از شبکه‌های داخلی مختلف را وصل کنید. ثبت‌نام/ورود/مدیریت نشست، مجوز سازمان، کلاس و TURN، reconnect و ban، چت/تخته، ضبط و بازپخش، restart بدون pull، backup/restore و DNS را بررسی کنید. warm-cache کافی نیست؛ restart سرد با registry خارجی غیرقابل دسترس هم آزموده شود. هیچ ادعای «کار می‌کند در اینترنت ملی» پیش از این تمرین ثبت نمی‌شود.
+منابع تنظیمات: [LiveKit self-hosting](https://docs.livekit.io/transport/self-hosting/deployment/)، [config نسخهٔ1.13.9](https://github.com/livekit/livekit/blob/v1.13.9/config-sample.yaml)، [Nodemailer SMTP](https://nodemailer.com/smtp). متن‌بازبودن ابزار، نیاز به عملیات شبکه/TLS و آزمایش واقعی را حذف نمی‌کند.

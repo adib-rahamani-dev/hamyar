@@ -9,6 +9,9 @@ import { getIdentity } from "@/modules/identity/runtime.server";
 import { createRoomRepository } from "@/modules/rooms/repository";
 import { DomainError } from "@/modules/tenancy/service";
 import { publicDeploymentStatus } from "@/modules/operations/deployment-status";
+import { mediaConfig } from "@/modules/media/config";
+import { deploymentMode } from "@/modules/operations/deployment-mode";
+import { Radio, Users, MessageSquare, Server, ArrowUpLeft } from "lucide-react";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "مرکز نظارت | همیار" };
 export default async function SupervisorPage() {
@@ -48,15 +51,41 @@ export default async function SupervisorPage() {
     ended: "پایان‌یافته",
   };
   return (
-    <AccountFrame>
+    <AccountFrame navigation>
       <div className="real-workspace">
         <div className="page-heading">
           <div>
             <span className="eyebrow">{snapshot.organization.name}</span>
             <h1>مرکز نظارت</h1>
-            <p className="muted">اطلاعات ثبت‌شدهٔ مجموعهٔ فعال شما.</p>
+            <p className="muted">
+              اتاق‌ها، میزبان‌ها و درخواست‌های مجموعه در یک نگاه.
+            </p>
           </div>
+          <Link className="button secondary" href="/supervisor">
+            تازه‌سازی وضعیت
+          </Link>
         </div>
+        <section className="supervisor-metrics" aria-label="خلاصهٔ مجموعه">
+          {[
+            { icon: Users, label: "اعضای فعال", value: snapshot.members },
+            {
+              icon: Radio,
+              label: "اتاق‌های باز در این فهرست",
+              value: snapshot.rooms.filter((r) => r.state === "open").length,
+            },
+            {
+              icon: MessageSquare,
+              label: "تیکت‌های پاسخ‌پذیر",
+              value: snapshot.openTickets,
+            },
+          ].map(({ icon: Icon, label, value }) => (
+            <article className="ops-panel supervisor-metric" key={label}>
+              <Icon size={24} />
+              <span>{label}</span>
+              <strong>{value.toLocaleString("fa-IR")}</strong>
+            </article>
+          ))}
+        </section>
         <section className="ops-panel">
           <h2>اعضا و اتاق‌ها</h2>
           <p className="section-note">
@@ -75,18 +104,29 @@ export default async function SupervisorPage() {
                       {states[room.state]}
                       {room.locked ? " · ورود بسته" : ""}
                     </span>
+                    <small>
+                      میزبان: {room.hosts ?? "میزبان فعالی ثبت نشده"} ·{" "}
+                      {room.present.toLocaleString("fa-IR")} حاضر در وب
+                    </small>
                   </div>
+                  <Link className="button secondary" href={`/rooms/${room.id}`}>
+                    ورود و نظارت <ArrowUpLeft size={16} />
+                  </Link>
                 </article>
               ))}
             </div>
           )}
           <p className="section-note">
-            باز بودن اتاق در برنامه به معنی اتصال رسانه یا حضور زنده نیست. حضور
-            و ظرفیت باقی‌مانده پس از اتصال سرویس رسانه قابل نمایش خواهند بود.
+            حضور وب از آخرین ارتباط در ۴۵ ثانیهٔ گذشته محاسبه می‌شود و تعداد
+            اتصال صوت و تصویر نیست. سقف و ظرفیت باقی‌ماندهٔ رسانه بدون
+            اندازه‌گیری سرور اعلام نمی‌شوند.
           </p>
         </section>
         <section className="ops-panel">
-          <h2>میزبان وب</h2>
+          <div className="section-heading">
+            <h2>مشخصات واقعی محیط اجرا</h2>
+            <Server size={24} />
+          </div>
           <dl className="host-facts">
             <div>
               <dt>ارائه‌دهنده</dt>
@@ -104,10 +144,44 @@ export default async function SupervisorPage() {
               <dt>نسخهٔ اجرا</dt>
               <dd>{web.runtime}</dd>
             </div>
+            <div>
+              <dt>شیوهٔ استقرار</dt>
+              <dd>
+                {deploymentMode(process.env) === "domestic"
+                  ? "زیرساخت داخلی"
+                  : "عادی"}
+              </dd>
+            </div>
+            <div>
+              <dt>تنظیمات رسانه</dt>
+              <dd>
+                {mediaConfig(process.env)
+                  ? "تنظیم شده؛ سلامت اتصال در اتاق بررسی می‌شود"
+                  : "سرور رسانه متصل نشده"}
+              </dd>
+            </div>
+            <div>
+              <dt>حافظهٔ مصرفی این فرایند وب</dt>
+              <dd>
+                {Math.round(
+                  process.memoryUsage().rss / 1024 / 1024,
+                ).toLocaleString("fa-IR")}{" "}
+                MiB
+              </dd>
+            </div>
+            <div>
+              <dt>زمان نمونه‌برداری</dt>
+              <dd>
+                {new Date(web.sampledAt).toLocaleString("fa-IR", {
+                  timeZone: "Asia/Tehran",
+                })}
+              </dd>
+            </div>
           </dl>
           <p className="section-note">
             CPU و RAM فیزیکی در سرویس serverless از این درخواست قابل اندازه‌گیری
-            نیستند. مصرف رسانه و ظرفیت سازمان هنوز متصل نیست.
+            نیستند. عدد حافظه تنها همین فرایند است و ظرفیت قابل فروش سرور را
+            نشان نمی‌دهد.
           </p>
         </section>
       </div>

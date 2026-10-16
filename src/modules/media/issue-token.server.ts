@@ -14,6 +14,7 @@ const sourceMap: Record<MediaSource, TrackSource> = {
 /** NOT an endpoint. Caller must resolve session, membership, ban and admission first. */
 export async function issueRoomToken(
   context: RoomAccessContext,
+  participant?: { sessionId: string; name: string },
 ): Promise<string> {
   const config = z
     .object({
@@ -32,7 +33,14 @@ export async function issueRoomToken(
   const token = new AccessToken(
     config.LIVEKIT_API_KEY,
     config.LIVEKIT_API_SECRET,
-    { identity: grant.identity, ttl: grant.ttl },
+    {
+      identity: grant.identity,
+      ttl: grant.ttl,
+      name: participant?.name,
+      attributes: participant
+        ? { hamyar_session_id: z.uuid().parse(participant.sessionId) }
+        : undefined,
+    },
   );
   token.addGrant({
     room: grant.room,
@@ -41,6 +49,7 @@ export async function issueRoomToken(
     canSubscribe: grant.canSubscribe,
     canPublish: grant.canPublish,
     canPublishData: grant.canPublishData,
+    canUpdateOwnMetadata: false,
     canPublishSources: grant.sources.map((source) => sourceMap[source]),
   });
   return token.toJwt();

@@ -1,6 +1,7 @@
 .git
 .github
 .next
+.gateway
 .vercel
 .artifacts
 node_modules

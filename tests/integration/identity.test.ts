@@ -6,6 +6,9 @@ import { createIdentity, type AuthMail } from "../../src/modules/identity/auth";
 import { createTenancy } from "../../src/modules/tenancy/service";
 import { assertRuntimeRole } from "../../src/modules/identity/database-role";
 import { createRoomRepository } from "../../src/modules/rooms/repository";
+import { createClassroom } from "../../src/modules/classroom/service";
+import { createSupport } from "../../src/modules/support/service";
+import { createOrganizationSettings } from "../../src/modules/organization-settings/service";
 
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !new URL(url).pathname.endsWith("_test"))
@@ -103,6 +106,253 @@ afterAll(async () => {
 });
 
 describe("real PostgreSQL identity and tenant boundary", () => {
+  it("persists classroom chat and board, accepts bounded room links without email identity claims, and enforces grants/ban/lock", async () => {
+    const owner = await account("ClassOwner"),
+      other = await account("ClassOther"),
+      guest = await account("ClassGuest");
+    const classroom = createClassroom(pool, auth),
+      repo = createRoomRepository(pool, auth);
+    const org = await tenancy.create(owner.client.headers, {
+      name: "Classroom school",
+      kind: "school",
+    });
+    await tenancy.create(other.client.headers, {
+      name: "Separate classroom",
+      kind: "company",
+    });
+    const room = await repo.create(owner.client.headers, {
+      title: "Real classroom",
+    });
+    expect(
+      (await classroom.snapshot(owner.client.headers, room.id)).room.state,
+    ).toBe("scheduled");
+    await expect(
+      classroom.message(owner.client.headers, room.id, {
+        clientId: randomUUID(),
+        body: "Too early",
+      }),
+    ).rejects.toMatchObject({ code: "ROOM_NOT_OPEN" });
+    await classroom.state(owner.client.headers, room.id, { state: "open" });
+    const link = await classroom.createLink(owner.client.headers, room.id, {
+      hours: 1,
+      maxUses: 1,
+    });
+    await expect(
+      classroom.snapshot(other.client.headers, room.id),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(
+      await classroom.redeem(guest.client.headers, { token: link.token }),
+    ).toEqual({ roomId: room.id });
+    expect(
+      await classroom.redeem(guest.client.headers, { token: link.token }),
+    ).toEqual({ roomId: room.id });
+    expect((await classroom.links(owner.client.headers, room.id))[0].uses).toBe(
+      1,
+    );
+    const clientId = randomUUID();
+    await classroom.message(guest.client.headers, room.id, {
+      clientId,
+      body: "<script>safe text</script>",
+    });
+    await classroom.message(guest.client.headers, room.id, {
+      clientId,
+      body: "Duplicate must not replace original",
+    });
+    const stroke = {
+      id: randomUUID(),
+      color: "emerald",
+      width: 4,
+      points: [
+        [10, 20],
+        [100, 120],
+      ],
+    };
+    await expect(
+      classroom.board(guest.client.headers, room.id, { action: "add", stroke }),
+    ).rejects.toMatchObject({ code: "BOARD_PERMISSION_REQUIRED" });
+    const guestMembership = (await tenancy.members(owner.client.headers)).find(
+      (m) => m.email === guest.email,
+    )!;
+    await classroom.control(owner.client.headers, room.id, {
+      membershipId: guestMembership.id,
+      action: "allow",
+    });
+    await classroom.board(guest.client.headers, room.id, {
+      action: "add",
+      stroke,
+    });
+    await classroom.board(guest.client.headers, room.id, {
+      action: "add",
+      stroke,
+    });
+    let snapshot = await classroom.snapshot(owner.client.headers, room.id);
+    expect(snapshot.board.revision).toBe(1);
+    expect(snapshot.board.strokes).toHaveLength(1);
+    expect(snapshot.messages).toHaveLength(1);
+    expect(snapshot.messages[0].body).toBe("<script>safe text</script>");
+    await expect(
+      classroom.board(owner.client.headers, room.id, {
+        action: "clear",
+        revision: 0,
+      }),
+    ).rejects.toMatchObject({ code: "BOARD_CHANGED" });
+    await classroom.presence(guest.client.headers, room.id, {
+      raisedHand: true,
+    });
+    snapshot = await classroom.snapshot(owner.client.headers, room.id);
+    expect(
+      snapshot.people.find((p) => p.userId === guestMembership.userId)
+        ?.raisedHand,
+    ).toBe(true);
+    await classroom.hideMessage(owner.client.headers, room.id, {
+      messageId: snapshot.messages[0].id,
+    });
+    expect(
+      (await classroom.snapshot(guest.client.headers, room.id)).messages[0]
+        .body,
+    ).toBe("");
+    await classroom.control(owner.client.headers, room.id, {
+      membershipId: guestMembership.id,
+      action: "revoke",
+    });
+    await expect(
+      classroom.board(guest.client.headers, room.id, {
+        action: "add",
+        stroke: { ...stroke, id: randomUUID() },
+      }),
+    ).rejects.toMatchObject({ code: "BOARD_PERMISSION_REQUIRED" });
+    await classroom.state(owner.client.headers, room.id, { locked: true });
+    await expect(
+      classroom.snapshot(guest.client.headers, room.id),
+    ).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
+    await classroom.state(owner.client.headers, room.id, { locked: false });
+    await classroom.control(owner.client.headers, room.id, {
+      membershipId: guestMembership.id,
+      action: "ban",
+    });
+    await expect(
+      classroom.redeem(guest.client.headers, { token: link.token }),
+    ).rejects.toMatchObject({ code: "ROOM_ACCESS_DENIED" });
+    await classroom.revokeLink(owner.client.headers, room.id, { id: link.id });
+    await expect(
+      classroom.redeem(guest.client.headers, { token: link.token }),
+    ).rejects.toMatchObject({ code: "ROOM_LINK_INVALID" });
+    await classroom.state(owner.client.headers, room.id, { state: "ended" });
+    await expect(
+      classroom.state(owner.client.headers, room.id, { state: "open" }),
+    ).rejects.toMatchObject({ code: "ROOM_ENDED" });
+    for (const table of [
+      "classroom_message",
+      "classroom_board",
+      "classroom_presence",
+      "classroom_link",
+    ])
+      expect((await pool.query(`SELECT * FROM ${table}`)).rows).toHaveLength(0);
+    expect(
+      (await tenancy.list(owner.client.headers)).activeOrganizationId,
+    ).toBe(org.id);
+  });
+  it("isolates tickets and brand settings with manager-only response/branding and immutable closed tickets", async () => {
+    const a = await account("SupportA"),
+      b = await account("SupportB"),
+      member = await account("SupportMember");
+    const support = createSupport(pool, auth),
+      settings = createOrganizationSettings(pool, auth);
+    await tenancy.create(a.client.headers, {
+      name: "Support school",
+      kind: "school",
+    });
+    await tenancy.create(b.client.headers, {
+      name: "Other support",
+      kind: "company",
+    });
+    const invitation = await tenancy.invite(a.client.headers, {
+      email: member.email,
+      role: "member",
+    });
+    await tenancy.acceptInvite(member.client.headers, invitation.token);
+    const ticket = await support.create(member.client.headers, {
+      title: "Connection help",
+      body: "Need some assistance",
+      priority: "high",
+    });
+    expect((await support.list(a.client.headers)).tickets[0].id).toBe(
+      ticket.id,
+    );
+    expect((await support.list(b.client.headers)).tickets).toHaveLength(0);
+    await expect(
+      support.reply(b.client.headers, ticket.id, { body: "Bad" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(
+      settings.update(member.client.headers, {
+        displayName: "Fake",
+        tone: "ocean",
+        welcome: "",
+      }),
+    ).rejects.toMatchObject({ code: "MANAGER_REQUIRED" });
+    await settings.update(a.client.headers, {
+      displayName: "Hamyar academy",
+      tone: "ocean",
+      welcome: "Welcome",
+    });
+    expect((await settings.read(member.client.headers)).displayName).toBe(
+      "Hamyar academy",
+    );
+    expect((await settings.read(b.client.headers)).displayName).toBe(
+      "Other support",
+    );
+    await support.reply(a.client.headers, ticket.id, {
+      body: "Resolved",
+      close: true,
+    });
+    await expect(
+      support.reply(member.client.headers, ticket.id, { body: "More" }),
+    ).rejects.toMatchObject({ code: "TICKET_CLOSED" });
+    expect((await support.list(member.client.headers)).replies).toHaveLength(1);
+  });
+  it("revokes an existing presenter role as well as a temporary grant", async () => {
+    const owner = await account("PresenterOwner"),
+      presenter = await account("PresenterGuest");
+    await tenancy.create(owner.client.headers, {
+      name: "Presenter permissions",
+      kind: "school",
+    });
+    const invite = await tenancy.invite(owner.client.headers, {
+      email: presenter.email,
+      role: "member",
+    });
+    await tenancy.acceptInvite(presenter.client.headers, invite.token);
+    const member = (await tenancy.members(owner.client.headers)).find(
+      (m) => m.email === presenter.email,
+    )!;
+    const rooms = createRoomRepository(pool, auth),
+      classroom = createClassroom(pool, auth);
+    const room = await rooms.create(owner.client.headers, {
+      title: "Presentation",
+    });
+    await rooms.assign(owner.client.headers, room.id, {
+      membershipId: member.id,
+      role: "presenter",
+      admitted: true,
+    });
+    await classroom.state(owner.client.headers, room.id, { state: "open" });
+    expect(
+      (await classroom.snapshot(presenter.client.headers, room.id)).me.canSpeak,
+    ).toBe(true);
+    await classroom.control(owner.client.headers, room.id, {
+      membershipId: member.id,
+      action: "revoke",
+    });
+    const snapshot = await classroom.snapshot(
+      presenter.client.headers,
+      room.id,
+    );
+    expect(snapshot.me.canDraw).toBe(false);
+    expect(snapshot.me.canSpeak).toBe(false);
+    expect(
+      (await rooms.context(presenter.client.headers, room.id)).assignment?.role,
+    ).toBe("attendee");
+  });
   it("retires legacy MFA metadata without deleting accounts and preserves tenant boundaries", async () => {
     const legacy = await account("LegacyMfa");
     const id = (await auth.api.getSession({ headers: legacy.client.headers }))!

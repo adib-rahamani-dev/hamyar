@@ -4,6 +4,36 @@
   flex-direction: column;
   min-height: 100dvh;
 }
+.supervisor-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.supervisor-metric {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.supervisor-metric svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.supervisor-metric span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.supervisor-metric strong {
+  margin-inline-start: auto;
+  font-size: 28px;
+}
+@media (max-width: 720px) {
+  .supervisor-metrics {
+    grid-template-columns: 1fr;
+  }
+  .supervisor-metric {
+    padding: 18px;
+  }
+}
 .account-topbar {
   display: flex;
   align-items: center;
@@ -309,4 +339,85 @@
   padding: 7px;
   font: inherit;
   font-size: 13px;
+}
+.workspace-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px max(24px, calc((100vw - 1200px) / 2));
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.workspace-navigation a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.workspace-navigation a:hover,
+.workspace-navigation a:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.ticket-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: start;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 17px;
+  margin-block: 6px;
+}
+.ticket-choice[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ticket-choice span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.ticket-thread {
+  margin-top: 22px;
+}
+.ticket-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
+}
+.ticket-reply {
+  border-inline-start: 3px solid var(--accent);
+  padding: 12px 18px;
+  margin-block: 15px;
+  background: var(--surface-raised);
+  border-radius: 0 12px 12px 0;
+}
+.ticket-reply small {
+  color: var(--muted);
+}
+.inline-check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.inline-check input {
+  width: 20px;
+  height: 20px;
+}
+@media (max-width: 640px) {
+  .workspace-navigation {
+    padding: 6px 12px;
+    gap: 4px;
+  }
+  .workspace-navigation a {
+    padding: 8px 11px;
+    font-size: 13px;
+  }
 }

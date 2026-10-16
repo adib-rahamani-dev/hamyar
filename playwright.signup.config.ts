@@ -12,6 +12,13 @@ export default defineConfig({
     channel:
       process.env.PLAYWRIGHT_CHANNEL ??
       (process.platform === "win32" ? "msedge" : undefined),
+    launchOptions: {
+      args: [
+        "--use-fake-device-for-media-stream",
+        "--use-fake-ui-for-media-stream",
+        "--autoplay-policy=no-user-gesture-required",
+      ],
+    },
   },
   projects: [
     {
@@ -43,6 +50,19 @@ export default defineConfig({
       RESEND_API_KEY: "",
       AUTH_EMAIL_FROM: "",
       AUTH_EMAIL_VERIFICATION_REQUIRED: "false",
+      AUTH_MAIL_TRANSPORT: "disabled",
+      HAMYAR_DEPLOYMENT_MODE:
+        process.env.HAMYAR_TEST_DEPLOYMENT_MODE ?? "normal",
+      HAMYAR_DOMESTIC_HOSTS: `${process.env.TEST_DATABASE_URL ? new URL(process.env.TEST_DATABASE_URL).hostname : "localhost"},localhost,127.0.0.1`,
+      ...(process.env.HAMYAR_TEST_MEDIA === "1"
+        ? {
+            LIVEKIT_URL: "ws://127.0.0.1:8090",
+            LIVEKIT_API_KEY: "hamyar_browser_fixture",
+            LIVEKIT_API_SECRET:
+              "synthetic-isolated-media-fixture-secret-0123456789",
+            HAMYAR_MEDIA_GATEWAY: "enabled",
+          }
+        : {}),
     },
   },
 });

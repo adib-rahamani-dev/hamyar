@@ -108,8 +108,11 @@ async function check(claims) {
     };
     return gateAllowed(claims, context, true);
   } finally {
-    await client.query("ROLLBACK");
-    client.release();
+    try {
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
   }
 }
 async function authenticate(req) {
@@ -127,9 +130,11 @@ async function authenticate(req) {
 }
 async function remove(claims) {
   // Closing the websocket alone is insufficient; explicitly remove media at the SFU.
-  await control
-    .removeParticipant(claims.video.room, claims.sub)
-    .catch(() => {});
+  await control.removeParticipant(claims.video.room, claims.sub).catch(() => {
+    console.error(
+      "Media revocation failed; check private SFU control connectivity.",
+    );
+  });
 }
 const server = createServer(async (req, res) => {
   if (req.url === "/health") {

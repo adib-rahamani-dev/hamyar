@@ -96,3 +96,55 @@ describe("local device privacy and lifecycle", () => {
     expect(capture.getSnapshot().error).not.toContain(error.message);
   });
 });
+
+describe("explicit input selection", () => {
+  it("uses the chosen input without acquiring the other device", async () => {
+    const { stream } = fixture();
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    const capture = new LocalCapture(() => ({ getUserMedia }));
+    await capture.start("video", "selected-camera");
+    expect(getUserMedia).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audio: false,
+        video: expect.objectContaining({
+          deviceId: { exact: "selected-camera" },
+        }),
+      }),
+    );
+    capture.stopAll();
+    await capture.start("audio", "selected-microphone");
+    expect(getUserMedia).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        video: false,
+        audio: expect.objectContaining({
+          deviceId: { exact: "selected-microphone" },
+        }),
+      }),
+    );
+    capture.stopAll();
+  });
+  it("does not let an old device request replace a newly selected input", async () => {
+    const old = fixture(),
+      next = fixture();
+    let release!: (stream: MediaStream) => void;
+    const getUserMedia = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<MediaStream>((resolve) => {
+            release = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(next.stream);
+    const capture = new LocalCapture(() => ({ getUserMedia }));
+    const waiting = capture.start("video", "old");
+    capture.stop("video");
+    await capture.start("video", "next");
+    release(old.stream);
+    await waiting;
+    expect(old.track.stop).toHaveBeenCalledOnce();
+    expect(next.track.stop).not.toHaveBeenCalled();
+    expect(capture.getSnapshot().video).toBe(next.stream);
+    capture.stopAll();
+  });
+});

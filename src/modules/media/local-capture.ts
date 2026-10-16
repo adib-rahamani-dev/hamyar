@@ -25,6 +25,8 @@ export function captureErrorMessage(error: unknown): string {
     return "دستگاه مورد نظر پیدا نشد. اتصال دوربین یا میکروفون را بررسی کنید.";
   if (name === "NotReadableError")
     return "دستگاه در دسترس نیست؛ ممکن است برنامهٔ دیگری از آن استفاده کند.";
+  if (name === "OverconstrainedError")
+    return "دستگاه انتخاب‌شده دیگر در دسترس نیست؛ دستگاه دیگری را انتخاب کنید.";
   return "فعال‌کردن دستگاه ممکن نشد. از مرورگر به‌روز و اتصال امن استفاده کنید.";
 }
 
@@ -52,7 +54,7 @@ export class LocalCapture {
     this.listeners.forEach((listener) => listener());
   }
 
-  async start(kind: CaptureKind): Promise<void> {
+  async start(kind: CaptureKind, deviceId?: string): Promise<void> {
     if (this.state[kind] || this.state.pending[kind]) return;
     const generation = ++this.generation[kind];
     this.update({
@@ -67,6 +69,7 @@ export class LocalCapture {
         kind === "audio"
           ? {
               audio: {
+                ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
                 echoCancellation: true,
                 noiseSuppression: true,
                 autoGainControl: true,
@@ -75,6 +78,7 @@ export class LocalCapture {
             }
           : {
               video: {
+                ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
                 width: { ideal: 1280 },
                 height: { ideal: 720 },
                 frameRate: { ideal: 24, max: 30 },

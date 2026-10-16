@@ -1,0 +1,316 @@
+.device-check {
+  max-width: 1080px;
+  margin-inline: auto;
+}
+.device-heading {
+  margin-block: 6px 30px;
+}
+.device-heading > span {
+  color: var(--accent);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 10px;
+}
+.device-heading h1 {
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.8px;
+}
+.device-heading > p {
+  color: var(--muted);
+  max-width: 650px;
+  line-height: 2;
+  font-size: 14px;
+  margin-top: 12px;
+}
+.device-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: start;
+  gap: 22px;
+}
+.device-camera-panel,
+.device-test-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  background: var(--surface);
+}
+.device-preview {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 13px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at center, var(--accent-soft), transparent),
+    var(--background);
+}
+.device-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.device-preview video[hidden] {
+  display: none;
+}
+.device-camera-empty {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 20px;
+}
+.device-camera-empty > span {
+  width: 80px;
+  height: 80px;
+  border-radius: 25px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  margin-bottom: 5px;
+}
+.device-camera-empty strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+.device-camera-empty p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.device-preview-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--background);
+}
+.device-camera-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: space-between;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.device-camera-toolbar > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.device-led {
+  width: 6px;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 50%;
+}
+.device-led.active {
+  background: var(--accent);
+}
+.device-check .button {
+  font-size: 12px;
+  white-space: normal;
+}
+.device-select-label {
+  display: block;
+  font-size: 12px;
+  margin-block: 20px 8px;
+}
+.device-check select {
+  width: 100%;
+  min-height: 46px;
+  font: inherit;
+  font-size: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--background);
+  text-overflow: ellipsis;
+}
+.device-check select:disabled {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.device-camera-panel > small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 2;
+  margin-top: 10px;
+}
+.device-tests {
+  display: grid;
+  gap: 18px;
+}
+.device-card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.device-test-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  display: grid;
+  place-items: center;
+}
+.device-card-title h2 {
+  font-size: 16px;
+}
+.device-card-title p {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.device-step {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.device-level {
+  --voice-level: 0;
+  height: 10px;
+  margin-top: 25px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  direction: rtl;
+}
+.device-level > span {
+  display: block;
+  width: calc(var(--voice-level) * 100%);
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+.device-test-status {
+  min-height: 36px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
+  margin-top: 12px;
+}
+.device-test-card .button {
+  margin-top: 15px;
+}
+.device-privacy {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  padding: 20px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-top: 24px;
+}
+.device-privacy > svg {
+  color: var(--accent);
+  margin-top: 3px;
+}
+.device-privacy strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.device-privacy p {
+  font-size: 12px;
+  line-height: 2;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.device-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-block: 24px;
+}
+.device-bottom > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.device-bottom > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.device-error {
+  margin-top: 20px;
+  border-inline-start: 3px solid var(--danger);
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--danger) 6%, var(--background));
+  font-size: 13px;
+}
+.device-error p {
+  margin-top: 8px;
+}
+.device-error button {
+  margin-top: 12px;
+  min-height: 44px;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+}
+.device-help {
+  border-top: 1px solid var(--border);
+  padding-block: 10px;
+}
+.device-help summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding-block: 12px;
+}
+.device-help h3 {
+  font-size: 14px;
+  margin-top: 18px;
+}
+.device-help p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 2;
+  max-width: 800px;
+  margin-top: 6px;
+}
+@media (max-width: 760px) {
+  .device-layout {
+    grid-template-columns: 1fr;
+  }
+  .device-camera-panel,
+  .device-test-card {
+    padding: 16px;
+  }
+  .device-heading {
+    margin-top: 0;
+  }
+  .device-heading > p {
+    font-size: 13px;
+  }
+  .device-privacy {
+    padding: 16px;
+  }
+}

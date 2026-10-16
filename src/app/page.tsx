@@ -1,9 +1,9 @@
 import { Dashboard } from "@/components/dashboard";
 import { localDemoEnabled } from "@/modules/operations/local-demo";
-import { redirect } from "next/navigation";
+import { Landing } from "@/components/landing";
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   if (localDemoEnabled(process.env)) return <Dashboard />;
-  redirect("/workspace");
+  return <Landing />;
 }

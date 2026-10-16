@@ -797,3 +797,11 @@
 :root[data-effects="off"] .classroom-toolbar {
   backdrop-filter: none;
 }
+.media-preflight-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}

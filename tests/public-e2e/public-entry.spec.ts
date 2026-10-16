@@ -4,6 +4,12 @@ test("public production never substitutes sample rooms or members for missing in
   request,
 }) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(
+    "فاصله کمتر",
+  );
+  await page
+    .getByRole("link", { name: "ورود به فضای شما", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(
     page.getByText(

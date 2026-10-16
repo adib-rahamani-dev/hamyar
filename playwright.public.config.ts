@@ -7,6 +7,12 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:3200",
     trace: "off",
+    launchOptions: {
+      args: [
+        "--use-fake-device-for-media-stream",
+        "--use-fake-ui-for-media-stream",
+      ],
+    },
     channel:
       process.env.PLAYWRIGHT_CHANNEL ??
       (process.platform === "win32" ? "msedge" : undefined),

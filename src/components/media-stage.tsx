@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Room, Track } from "livekit-client";
 import {
   Mic,
@@ -11,6 +12,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { classroomRoomOptions } from "@/modules/media/room-options";
+import { useDevicePreferences } from "./device-preferences";
 type Feed = {
   id: string;
   name: string;
@@ -89,6 +91,7 @@ export function MediaStage({
   open: boolean;
   canSpeak: boolean;
 }) {
+  const { selected } = useDevicePreferences();
   const room = useRef<Room | null>(null),
     epoch = useRef(0),
     alive = useRef(true),
@@ -259,10 +262,12 @@ export function MediaStage({
       if (kind === "microphone")
         await current.localParticipant.setMicrophoneEnabled(
           !current.localParticipant.isMicrophoneEnabled,
+          selected.audio ? { deviceId: { exact: selected.audio } } : undefined,
         );
       else if (kind === "camera")
         await current.localParticipant.setCameraEnabled(
           !current.localParticipant.isCameraEnabled,
+          selected.video ? { deviceId: { exact: selected.video } } : undefined,
         );
       else
         await current.localParticipant.setScreenShareEnabled(
@@ -314,7 +319,7 @@ export function MediaStage({
           <VideoOff size={27} />
           <p>
             {status === "connected"
-              ? "صدا و تصویر دریافت می‌شوند؛ دوربین فعالی وجود ندارد."
+              ? "به رسانه متصل هستید؛ دوربین فعالی برای نمایش وجود ندارد."
               : "با اتصال، صدای کلاس را می‌شنوید. دستگاه‌های شما خاموش می‌مانند."}
           </p>
         </div>
@@ -325,13 +330,21 @@ export function MediaStage({
         </p>
       )}
       {status === "idle" ? (
-        <button
-          className="button primary"
-          disabled={!open}
-          onClick={() => void connect()}
-        >
-          اتصال به صوت و تصویر
-        </button>
+        <>
+          <Link
+            className="media-preflight-link"
+            href={`/device-check?room=${roomId}`}
+          >
+            بررسی دوربین و میکروفون پیش از اتصال
+          </Link>
+          <button
+            className="button primary"
+            disabled={!open}
+            onClick={() => void connect()}
+          >
+            اتصال به صوت و تصویر
+          </button>
+        </>
       ) : (
         <button className="text-action" onClick={close}>
           قطع اتصال رسانه
